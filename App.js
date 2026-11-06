@@ -181,14 +181,6 @@ export default function App() {
     </SafeAreaView>
   );
 }
-
-AppRegistry.registerComponent('main', () => App);
-if (Platform.OS === 'web') {
-  AppRegistry.runApplication('main', {
-    rootTag: document.getElementById('root'),
-  });
-}
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FDFBF7', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   mainContent: { flex: 1 },
