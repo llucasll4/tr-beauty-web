@@ -6,8 +6,12 @@ const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2; 
 
 export default function App() {
+  // Controle de Navegação: Define qual tela está ativa no momento
   const [currentScreen, setCurrentScreen] = useState('Home');
 
+  // ==========================================
+  // TELA 1: HOME (Início da Cliente)
+  // ==========================================
   const HomeScreen = () => (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <View style={styles.header}>
@@ -15,9 +19,9 @@ export default function App() {
           <Text style={styles.greeting}>Olá, Marcela ✨</Text>
           <Text style={styles.subtitle}>Pronta para renovar suas unhas?</Text>
         </View>
-        <View style={styles.profileIcon}>
+        <TouchableOpacity style={styles.profileIcon}>
           <Text style={styles.profileInitials}>M</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.loyaltyCard}>
@@ -35,7 +39,10 @@ export default function App() {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.primaryButton} onPress={() => setCurrentScreen('Booking')}>
+      <TouchableOpacity 
+        style={styles.primaryButton}
+        onPress={() => setCurrentScreen('Booking')} // AQUI ESTÁ A MÁGICA: Muda para a tela de Agendar
+      >
         <Text style={styles.primaryButtonText}>Agendar Meu Horário</Text>
         <Ionicons name="calendar-outline" size={20} color="#FAF9F6" />
       </TouchableOpacity>
@@ -54,6 +61,9 @@ export default function App() {
     </ScrollView>
   );
 
+  // ==========================================
+  // TELA 2: AGENDAMENTO
+  // ==========================================
   const BookingScreen = () => {
     const [selectedService, setSelectedService] = useState('1');
     const [selectedDate, setSelectedDate] = useState('14');
@@ -101,6 +111,9 @@ export default function App() {
     );
   };
 
+  // ==========================================
+  // TELA 3: PORTEFÓLIO
+  // ==========================================
   const PortfolioScreen = () => (
     <View style={{ flex: 1 }}>
       <View style={styles.pageHeader}>
@@ -121,13 +134,16 @@ export default function App() {
     </View>
   );
 
+  // ==========================================
+  // TELA 4: PAINEL ADMIN
+  // ==========================================
   const AdminScreen = () => (
     <ScrollView contentContainerStyle={[styles.container, {backgroundColor: '#F4F5F7'}]}>
       <View style={{marginBottom: 24, marginTop: 10}}>
         <Text style={styles.greeting}>Painel Admin 👩‍💻</Text>
         <Text style={styles.subtitle}>Visão geral do estúdio</Text>
       </View>
-
+      
       <View style={{flexDirection: 'row', gap: 10, marginBottom: 20}}>
         <View style={styles.adminStatCard}>
           <Text style={{fontSize: 12, color: '#8E8E93'}}>Faturação Hoje</Text>
@@ -148,8 +164,13 @@ export default function App() {
     </ScrollView>
   );
 
+  // ==========================================
+  // RENDERIZAÇÃO DO APLICATIVO
+  // ==========================================
   return (
     <SafeAreaView style={styles.safeArea}>
+      
+      {/* Aqui a lógica decide qual tela mostrar baseado no botão clicado */}
       <View style={styles.mainContent}>
         {currentScreen === 'Home' && <HomeScreen />}
         {currentScreen === 'Booking' && <BookingScreen />}
@@ -157,17 +178,18 @@ export default function App() {
         {currentScreen === 'Admin' && <AdminScreen />}
       </View>
 
+      {/* MENU INFERIOR DE NAVEGAÇÃO (BOTTOM TABS) */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Home')}>
           <Ionicons name={currentScreen === 'Home' ? "home" : "home-outline"} size={24} color={currentScreen === 'Home' ? "#2C2C2C" : "#8E8E93"} />
           <Text style={[styles.navText, currentScreen === 'Home' && styles.navTextActive]}>Início</Text>
         </TouchableOpacity>
-
+        
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Booking')}>
           <Ionicons name={currentScreen === 'Booking' ? "calendar" : "calendar-outline"} size={24} color={currentScreen === 'Booking' ? "#2C2C2C" : "#8E8E93"} />
           <Text style={[styles.navText, currentScreen === 'Booking' && styles.navTextActive]}>Agendar</Text>
         </TouchableOpacity>
-
+        
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Portfolio')}>
           <Ionicons name={currentScreen === 'Portfolio' ? "image" : "image-outline"} size={24} color={currentScreen === 'Portfolio' ? "#2C2C2C" : "#8E8E93"} />
           <Text style={[styles.navText, currentScreen === 'Portfolio' && styles.navTextActive]}>Galeria</Text>
@@ -178,10 +200,14 @@ export default function App() {
           <Text style={[styles.navText, currentScreen === 'Admin' && styles.navTextActive]}>Admin</Text>
         </TouchableOpacity>
       </View>
+
     </SafeAreaView>
   );
 }
 
+// ==========================================
+// ESTILOS GERAIS
+// ==========================================
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FDFBF7', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   mainContent: { flex: 1 },
