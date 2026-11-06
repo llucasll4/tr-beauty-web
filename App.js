@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, Image, Platform, StatusBar, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, AppRegistry, Platform, StatusBar, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2; 
 
 export default function App() {
-  // Controle de Navegação: Define qual tela está ativa no momento
   const [currentScreen, setCurrentScreen] = useState('Home');
 
-  // ==========================================
-  // TELA 1: HOME (Início da Cliente)
-  // ==========================================
   const HomeScreen = () => (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <View style={styles.header}>
@@ -19,9 +15,9 @@ export default function App() {
           <Text style={styles.greeting}>Olá, Marcela ✨</Text>
           <Text style={styles.subtitle}>Pronta para renovar suas unhas?</Text>
         </View>
-        <TouchableOpacity style={styles.profileIcon}>
+        <View style={styles.profileIcon}>
           <Text style={styles.profileInitials}>M</Text>
-        </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.loyaltyCard}>
@@ -39,10 +35,7 @@ export default function App() {
         </View>
       </View>
 
-      <TouchableOpacity 
-        style={styles.primaryButton}
-        onPress={() => setCurrentScreen('Booking')} // AQUI ESTÁ A MÁGICA: Muda para a tela de Agendar
-      >
+      <TouchableOpacity style={styles.primaryButton} onPress={() => setCurrentScreen('Booking')}>
         <Text style={styles.primaryButtonText}>Agendar Meu Horário</Text>
         <Ionicons name="calendar-outline" size={20} color="#FAF9F6" />
       </TouchableOpacity>
@@ -61,9 +54,6 @@ export default function App() {
     </ScrollView>
   );
 
-  // ==========================================
-  // TELA 2: AGENDAMENTO
-  // ==========================================
   const BookingScreen = () => {
     const [selectedService, setSelectedService] = useState('1');
     const [selectedDate, setSelectedDate] = useState('14');
@@ -111,9 +101,6 @@ export default function App() {
     );
   };
 
-  // ==========================================
-  // TELA 3: PORTEFÓLIO
-  // ==========================================
   const PortfolioScreen = () => (
     <View style={{ flex: 1 }}>
       <View style={styles.pageHeader}>
@@ -134,9 +121,6 @@ export default function App() {
     </View>
   );
 
-  // ==========================================
-  // TELA 4: PAINEL ADMIN
-  // ==========================================
   const AdminScreen = () => (
     <ScrollView contentContainerStyle={[styles.container, {backgroundColor: '#F4F5F7'}]}>
       <View style={{marginBottom: 24, marginTop: 10}}>
@@ -164,13 +148,8 @@ export default function App() {
     </ScrollView>
   );
 
-  // ==========================================
-  // RENDERIZAÇÃO DO APLICATIVO
-  // ==========================================
   return (
     <SafeAreaView style={styles.safeArea}>
-      
-      {/* Aqui a lógica decide qual tela mostrar baseado no botão clicado */}
       <View style={styles.mainContent}>
         {currentScreen === 'Home' && <HomeScreen />}
         {currentScreen === 'Booking' && <BookingScreen />}
@@ -178,7 +157,6 @@ export default function App() {
         {currentScreen === 'Admin' && <AdminScreen />}
       </View>
 
-      {/* MENU INFERIOR DE NAVEGAÇÃO (BOTTOM TABS) */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Home')}>
           <Ionicons name={currentScreen === 'Home' ? "home" : "home-outline"} size={24} color={currentScreen === 'Home' ? "#2C2C2C" : "#8E8E93"} />
@@ -200,14 +178,17 @@ export default function App() {
           <Text style={[styles.navText, currentScreen === 'Admin' && styles.navTextActive]}>Admin</Text>
         </TouchableOpacity>
       </View>
-
     </SafeAreaView>
   );
 }
 
-// ==========================================
-// ESTILOS GERAIS
-// ==========================================
+AppRegistry.registerComponent('main', () => App);
+if (Platform.OS === 'web') {
+  AppRegistry.runApplication('main', {
+    rootTag: document.getElementById('root'),
+  });
+}
+
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FDFBF7', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   mainContent: { flex: 1 },
