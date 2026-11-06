@@ -8,7 +8,9 @@
     "web": "expo start --web",
     "build": "expo export --platform web"
   },
-  "dependencies": {
+  "dependencies": { 
+    "@supabase/supabase-js": "^2.49.0",
+    "react-native-url-polyfill": "^2.0.0"
     "@expo/vector-icons": "14.0.0",
     "@expo/metro-runtime": "~3.2.3",
     "expo": "~51.0.0",
