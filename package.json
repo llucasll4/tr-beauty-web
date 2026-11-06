@@ -2,12 +2,15 @@
   "name": "tr-beauty-concept",
   "version": "1.0.0",
   "private": true,
+  "main": "index.js",
   "scripts": {
     "start": "expo start",
-    "web": "npx expo start --web"
+    "web": "expo start --web",
+    "build": "expo export --platform web"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
+    "@expo/metro-runtime": "~3.2.3",
     "expo": "~51.0.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
