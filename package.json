@@ -4,26 +4,17 @@
   "private": true,
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "npx expo start --web"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
     "expo": "~51.0.0",
     "react": "18.2.0",
+    "react-dom": "18.2.0",
     "react-native": "0.74.1",
     "react-native-web": "~0.19.10"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
-  },
-  "expo": {
-    "name": "TR Beauty Concept",
-    "slug": "tr-beauty-concept",
-    "version": "1.0.0",
-    "web": {
-      "bundler": "metro"
-    }
   }
 }
