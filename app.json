@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "TR Beauty Concept",
+    "slug": "tr-beauty-concept",
+    "version": "1.0.0",
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "TR Beauty Concept"
+    }
+  }
+}
