@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, UseEffect } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, AppRegistry, Platform, StatusBar, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
