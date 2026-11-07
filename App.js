@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+mport React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -44,10 +44,43 @@ function futureDates() {
 }
 const readableDate = (iso) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const monthLabel = (monthKey) => {
+  const [y, m] = monthKey.split('-').map(Number);
+  const label = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('pt-BR', {
+    timeZone: 'UTC', month: 'long', year: 'numeric',
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+};
+const offsetMonth = (monthKey, offset) => {
+  const [y, m] = monthKey.split('-').map(Number);
+  const newDate = new Date(Date.UTC(y, m - 1 + offset, 1));
+  return newDate.toISOString().slice(0, 7);
+};
+const initialBookableDate = () => futureDates().find(({ key }) => {
+  const weekday = new Date(`${key}T12:00:00Z`).getUTCDay();
+  return weekday >= 2 && weekday <= 6;
+})?.key || localDateKey(new Date());
+function buildCalendar(monthKey, allowedDateKeys) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const firstColumn = (firstWeekday + 6) % 7; // Segunda-feira primeiro
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const cells = Array.from({ length: firstColumn }, () => null);
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+    cells.push({ key, day, enabled: allowedDateKeys.has(key) && weekday >= 2 && weekday <= 6 });
+  }
+  while (cells.length % 7) cells.push(null);
+  return cells;
+}
+
 function MainApp({ user, isAdmin, onLogout }) {
   const [currentScreen, setCurrentScreen] = useState('Home');
   const [selectedServiceId, setSelectedServiceId] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(localDateKey(new Date()));
+  const [selectedDate, setSelectedDate] = useState(initialBookableDate);
+  const [calendarMonth, setCalendarMonth] = useState(() => initialBookableDate().slice(0, 7));
   const [selectedTime, setSelectedTime] = useState(null);
   const [slots, setSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -158,6 +191,10 @@ function MainApp({ user, isAdmin, onLogout }) {
   const activeServices = services.filter((service) => service.active);
 
   const dates = futureDates();
+  const allowedDateKeys = new Set(dates.map(date => date.key));
+  const calendarCells = buildCalendar(calendarMonth, allowedDateKeys);
+  const firstCalendarMonth = dates[0].key.slice(0, 7);
+  const lastCalendarMonth = dates[dates.length - 1].key.slice(0, 7);
   const chosenService = activeServices.find(s => s.id === selectedServiceId);
 
   useEffect(() => {
@@ -304,14 +341,49 @@ function MainApp({ user, isAdmin, onLogout }) {
         ))}
         {!activeServices.length && <Text style={styles.subtitle}>Nenhum serviço ativo disponível.</Text>}
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>2. Escolha a data</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-          {dates.map(date => (
-            <TouchableOpacity key={date.key} onPress={() => { setBookingSuccess(''); setSelectedDate(date.key); }}
-              style={[selectedDate === date.key ? styles.dateBoxSelected : styles.dateBox, { marginRight: 8 }]}>
-              <Text style={selectedDate === date.key ? styles.optionSelectedText : styles.optionText}>{date.label}</Text>
+        <View style={styles.calendarCard}>
+          <View style={styles.calendarHeader}>
+            <TouchableOpacity accessibilityLabel="Mês anterior" disabled={calendarMonth <= firstCalendarMonth}
+              onPress={() => setCalendarMonth(current => offsetMonth(current, -1))}
+              style={styles.calendarArrow}>
+              <Ionicons name="chevron-back" size={20} color={calendarMonth <= firstCalendarMonth ? '#D1C9C1' : colors.ink} />
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+            <Text style={styles.calendarMonthTitle}>{monthLabel(calendarMonth)}</Text>
+            <TouchableOpacity accessibilityLabel="Próximo mês" disabled={calendarMonth >= lastCalendarMonth}
+              onPress={() => setCalendarMonth(current => offsetMonth(current, 1))}
+              style={styles.calendarArrow}>
+              <Ionicons name="chevron-forward" size={20} color={calendarMonth >= lastCalendarMonth ? '#D1C9C1' : colors.ink} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.calendarGrid}>
+            {WEEKDAYS.map(day => (
+              <View key={day} style={styles.calendarCell}>
+                <Text style={styles.calendarWeekday}>{day}</Text>
+              </View>
+            ))}
+            {calendarCells.map((day, index) => (
+              <View key={day?.key || `empty-${index}`} style={styles.calendarCell}>
+                {day && (
+                  <TouchableOpacity accessibilityRole="button"
+                    accessibilityLabel={`${day.day} de ${monthLabel(calendarMonth)}`}
+                    accessibilityState={{ disabled: !day.enabled, selected: selectedDate === day.key }}
+                    disabled={!day.enabled}
+                    onPress={() => {
+                      setBookingSuccess('');
+                      setBookingError('');
+                      setSelectedDate(day.key);
+                    }}
+                    style={[styles.calendarDay, day.enabled && styles.calendarDayEnabled,
+                      selectedDate === day.key && styles.calendarDaySelected]}>
+                    <Text style={[styles.calendarDayText, !day.enabled && styles.calendarDayDisabledText,
+                      selectedDate === day.key && styles.calendarDaySelectedText]}>{day.day}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </View>
+          <Text style={styles.calendarHint}>Terça a sábado • datas disponíveis nos próximos 30 dias</Text>
+        </View>
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>3. Horários disponíveis</Text>
         {slotsLoading && <ActivityIndicator color={colors.mocha} />}
         {!slotsLoading && chosenService && slots.length === 0 && !bookingError && (
@@ -692,8 +764,20 @@ const styles = StyleSheet.create({
   bookingCardSelected: { borderColor: colors.ink, backgroundColor: colors.background },
   radioSelected: { height: 20, width: 20, borderRadius: 10, borderWidth: 1, borderColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
   radioDot: { height: 10, width: 10, borderRadius: 5, backgroundColor: colors.ink },
-  dateBox: { paddingVertical: 12, paddingHorizontal: 16, backgroundColor: colors.white, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
-  dateBoxSelected: { paddingVertical: 12, paddingHorizontal: 16, backgroundColor: colors.ink, borderRadius: 8 },
+  calendarCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 12, paddingTop: 14, paddingBottom: 18 },
+  calendarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
+  calendarArrow: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
+  calendarMonthTitle: { fontSize: 17, fontWeight: '700', color: colors.ink },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calendarCell: { width: '14.2857%', height: 47, justifyContent: 'center', alignItems: 'center' },
+  calendarWeekday: { color: colors.mocha, fontWeight: '700', fontSize: 12 },
+  calendarDay: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  calendarDayEnabled: { backgroundColor: '#F2EDE8' },
+  calendarDaySelected: { backgroundColor: colors.ink },
+  calendarDayText: { color: colors.ink, fontSize: 14, fontWeight: '500' },
+  calendarDayDisabledText: { color: '#C7C0BA' },
+  calendarDaySelectedText: { color: colors.white, fontWeight: '700' },
+  calendarHint: { textAlign: 'center', color: colors.muted, fontSize: 11, marginTop: 14 },
   timeBox: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: colors.white, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
   timeBoxSelected: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: colors.ink, borderRadius: 8 },
   optionText: { color: colors.ink },
