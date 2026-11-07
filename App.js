@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
+import AuthScreen from './AuthScreen';
+import ProfileScreen from './ProfileScreen';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2;
@@ -559,6 +561,7 @@ function MainApp({ user, isAdmin, onLogout }) {
         {currentScreen === 'Home' && HomeScreen()}
         {currentScreen === 'Booking' && BookingScreen()}
         {currentScreen === 'Portfolio' && PortfolioScreen()}
+        {currentScreen === 'Profile' && <ProfileScreen user={user} onLogout={onLogout}/>}
         {currentScreen === 'Admin' && isAdmin && AdminScreen()}
       </View>
 
@@ -575,6 +578,10 @@ function MainApp({ user, isAdmin, onLogout }) {
           <Ionicons name={currentScreen === 'Portfolio' ? 'image' : 'image-outline'} size={24} color={currentScreen === 'Portfolio' ? colors.ink : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Portfolio' && styles.navTextActive]}>Galeria</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Profile')}>
+          <Ionicons name={currentScreen === 'Profile' ? 'person' : 'person-outline'} size={24} color={currentScreen === 'Profile' ? colors.ink : colors.muted}/>
+          <Text style={[styles.navText,currentScreen === 'Profile' && styles.navTextActive]}>Perfil</Text>
+        </TouchableOpacity>
         {isAdmin && (
           <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Admin')}>
             <Ionicons name={currentScreen === 'Admin' ? 'settings' : 'settings-outline'} size={24} color={currentScreen === 'Admin' ? colors.ink : colors.muted} />
@@ -590,9 +597,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
@@ -644,6 +649,7 @@ export default function App() {
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION') return;
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
       // Consultas ao banco ocorrem fora do callback de autenticação.
       setTimeout(() => {
         if (active) applySession(session);
@@ -655,28 +661,6 @@ export default function App() {
       listener.subscription.unsubscribe();
     };
   }, []);
-
-  async function handleLogin() {
-    if (!email.trim() || !password) {
-      setErrorMessage('Informe seu e-mail e senha.');
-      return;
-    }
-    setSubmitting(true);
-    setErrorMessage('');
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-      if (error) {
-        setErrorMessage('Não foi possível entrar. Confira e-mail, senha e confirmação da conta.');
-      }
-    } catch (error) {
-      setErrorMessage('Falha na conexão. Tente novamente.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   async function handleLogout() {
     const { error } = await supabase.auth.signOut();
@@ -692,49 +676,13 @@ export default function App() {
     );
   }
 
+  if (passwordRecovery) return <AuthScreen recovery onRecoveryDone={() => setPasswordRecovery(false)} />;
+
   if (user) {
     return <MainApp user={user} isAdmin={isAdmin} onLogout={handleLogout} />;
   }
 
-  return (
-    <SafeAreaView style={styles.loginPage}>
-      <ScrollView contentContainerStyle={styles.loginContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.loginLogo}>
-          <Ionicons name="sparkles-outline" size={30} color={colors.mocha} />
-        </View>
-        <Text style={styles.loginTitle}>TR Beauty Concept</Text>
-        <Text style={styles.loginSubtitle}>Seu espaço de beleza, do seu jeito.</Text>
-        <Text style={styles.inputLabel}>E-mail</Text>
-        <TextInput
-          placeholder="seuemail@exemplo.com"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          autoComplete="email"
-          value={email}
-          onChangeText={setEmail}
-          style={styles.loginInput}
-        />
-        <Text style={styles.inputLabel}>Senha</Text>
-        <TextInput
-          placeholder="Digite sua senha"
-          secureTextEntry
-          autoComplete="current-password"
-          value={password}
-          onChangeText={setPassword}
-          style={styles.loginInput}
-          onSubmitEditing={handleLogin}
-        />
-        {!!errorMessage && <Text style={styles.loginError}>{errorMessage}</Text>}
-        <TouchableOpacity style={[styles.loginButton, submitting && { opacity: 0.6 }]} onPress={handleLogin} disabled={submitting}>
-          {submitting ? <ActivityIndicator color={colors.white} /> : <Text style={styles.loginButtonText}>Entrar</Text>}
-        </TouchableOpacity>
-        <Text style={styles.loginFootnote}>
-          Nesta primeira etapa, use a conta já cadastrada no Supabase. Cadastro e recuperação de senha serão adicionados depois.
-        </Text>
-      </ScrollView>
-    </SafeAreaView>
-  );
+  return <AuthScreen />;
 }
 
 const styles = StyleSheet.create({
