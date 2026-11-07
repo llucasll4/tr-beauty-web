@@ -33,6 +33,104 @@ function MainApp({ user, isAdmin, onLogout }) {
   const [selectedDate, setSelectedDate] = useState('14');
   const [selectedTime, setSelectedTime] = useState('14:00');
   const [bookingNotice, setBookingNotice] = useState(false);
+  const [services, setServices] = useState([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [serviceError, setServiceError] = useState('');
+  const [savingService, setSavingService] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [showServiceForm, setShowServiceForm] = useState(false);
+  const [serviceForm, setServiceForm] = useState({
+    name: '', description: '', category: '', price: '',
+    duration_minutes: '', active: true,
+  });
+
+  async function loadServices() {
+    setServicesLoading(true);
+    setServiceError('');
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('id,name,description,category,price,duration_minutes,active')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      setServices(data || []);
+    } catch (error) {
+      setServiceError('Não foi possível carregar os serviços: ' + error.message);
+    } finally {
+      setServicesLoading(false);
+    }
+  }
+
+  useEffect(() => { loadServices(); }, [isAdmin]);
+
+  function beginNewService() {
+    setEditingId(null);
+    setServiceForm({ name: '', description: '', category: '', price: '', duration_minutes: '', active: true });
+    setShowServiceForm(true);
+    setServiceError('');
+  }
+
+  function beginEditService(service) {
+    setEditingId(service.id);
+    setServiceForm({
+      name: service.name || '', description: service.description || '',
+      category: service.category || '', price: String(service.price),
+      duration_minutes: String(service.duration_minutes), active: service.active,
+    });
+    setShowServiceForm(true);
+    setServiceError('');
+  }
+
+  async function saveService() {
+    if (!isAdmin) return;
+    const price = Number(serviceForm.price.replace(',', '.'));
+    const duration = Number(serviceForm.duration_minutes);
+    if (!serviceForm.name.trim() || !serviceForm.price.trim() ||
+        !Number.isFinite(price) || price < 0 ||
+        !Number.isInteger(duration) || duration <= 0) {
+      setServiceError('Preencha nome, preço válido e duração em minutos maior que zero.');
+      return;
+    }
+    setSavingService(true);
+    setServiceError('');
+    const payload = {
+      name: serviceForm.name.trim(),
+      description: serviceForm.description.trim() || null,
+      category: serviceForm.category.trim() || null,
+      price, duration_minutes: duration, active: serviceForm.active,
+    };
+    try {
+      const query = editingId
+        ? supabase.from('services').update(payload).eq('id', editingId)
+        : supabase.from('services').insert(payload);
+      const { error } = await query;
+      if (error) throw error;
+      setShowServiceForm(false);
+      setEditingId(null);
+      await loadServices();
+    } catch (error) {
+      setServiceError('Não foi possível salvar: ' + error.message);
+    } finally {
+      setSavingService(false);
+    }
+  }
+
+  async function toggleService(service) {
+    if (!isAdmin) return;
+    setServiceError('');
+    const { error } = await supabase.from('services')
+      .update({ active: !service.active }).eq('id', service.id);
+    if (error) {
+      setServiceError('Não foi possível alterar o serviço: ' + error.message);
+    } else {
+      await loadServices();
+    }
+  }
+
+  const money = (value) => Number(value).toLocaleString('pt-BR', {
+    style: 'currency', currency: 'BRL',
+  });
+  const activeServices = services.filter((service) => service.active);
 
   const HomeScreen = () => (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
@@ -63,16 +161,22 @@ function MainApp({ user, isAdmin, onLogout }) {
         <Ionicons name="calendar-outline" size={20} color={colors.background} />
       </TouchableOpacity>
 
-      <Text style={styles.sectionTitle}>Serviços Populares</Text>
+      <Text style={styles.sectionTitle}>Serviços disponíveis</Text>
+      {servicesLoading && <ActivityIndicator color={colors.mocha} />}
+      {!!serviceError && !isAdmin && <Text style={styles.loginError}>{serviceError}</Text>}
+      {!servicesLoading && activeServices.length === 0 && (
+        <Text style={styles.subtitle}>Nenhum serviço disponível por enquanto.</Text>
+      )}
       <View style={styles.servicesGrid}>
-        <View style={styles.simpleServiceCard}>
-          <Text style={styles.serviceTitle}>Manutenção Fibra</Text>
-          <Text style={styles.serviceDetails}>2h • R$ 150 (exemplo)</Text>
-        </View>
-        <View style={styles.simpleServiceCard}>
-          <Text style={styles.serviceTitle}>Banho de Gel</Text>
-          <Text style={styles.serviceDetails}>1h30 • R$ 120 (exemplo)</Text>
-        </View>
+        {activeServices.map((service) => (
+          <View key={service.id} style={styles.simpleServiceCard}>
+            <Text style={styles.serviceTitle}>{service.name}</Text>
+            <Text style={styles.serviceDetails}>
+              {service.duration_minutes} min • {money(service.price)}
+            </Text>
+            {!!service.description && <Text style={styles.subtitle}>{service.description}</Text>}
+          </View>
+        ))}
       </View>
       <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
         <Ionicons name="log-out-outline" size={18} color={colors.mocha} />
@@ -88,15 +192,17 @@ function MainApp({ user, isAdmin, onLogout }) {
         <Text style={styles.subtitle}>Prévia: os horários ainda não são reais.</Text>
       </View>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.sectionTitle}>1. Escolha o serviço</Text>
-        <View style={[styles.bookingCard, styles.bookingCardSelected]}>
-          <View>
-            <Text style={styles.serviceTitle}>Manutenção em Gel</Text>
-            <Text style={styles.serviceDetails}>90 min • R$ 120 (exemplo)</Text>
+        <Text style={styles.sectionTitle}>1. Serviços disponíveis</Text>
+        {activeServices.map((service) => (
+          <View key={service.id} style={styles.bookingCard}>
+            <View>
+              <Text style={styles.serviceTitle}>{service.name}</Text>
+              <Text style={styles.serviceDetails}>{service.duration_minutes} min • {money(service.price)}</Text>
+            </View>
           </View>
-          <View style={styles.radioSelected}><View style={styles.radioDot} /></View>
-        </View>
-
+        ))}
+        {activeServices.length === 0 && <Text style={styles.subtitle}>Nenhum serviço disponível.</Text>}
+        <Text style={[styles.subtitle, { marginTop: 10 }]}>Agendamentos ainda estão em demonstração. Nenhuma reserva será registrada.</Text>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>2. Escolha a data</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {['14 Ter', '15 Qua', '16 Qui'].map((d) => {
@@ -140,7 +246,7 @@ function MainApp({ user, isAdmin, onLogout }) {
           style={styles.confirmButton}
           onPress={() => setBookingNotice(true)}
         >
-          <Text style={styles.confirmButtonText}>Testar reserva</Text>
+          <Text style={styles.confirmButtonText}>Demonstração de reserva</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -182,10 +288,80 @@ function MainApp({ user, isAdmin, onLogout }) {
           <Text style={styles.adminStatValue}>—</Text>
         </View>
       </View>
-      <Text style={styles.sectionTitle}>Agenda de Hoje</Text>
+      <Text style={styles.sectionTitle}>Gerenciar serviços</Text>
+      <TouchableOpacity style={styles.confirmButton} onPress={beginNewService}>
+        <Text style={styles.confirmButtonText}>+ Novo serviço</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={loadServices} style={{ paddingVertical: 14 }}>
+        <Text style={{ color: colors.mocha }}>Atualizar lista</Text>
+      </TouchableOpacity>
+      {servicesLoading && <ActivityIndicator color={colors.mocha} />}
+      {!!serviceError && <Text style={styles.loginError}>{serviceError}</Text>}
+      {services.map((service) => (
+        <View key={service.id} style={[styles.simpleServiceCard, { marginBottom: 12 }]}>
+          <Text style={styles.serviceTitle}>{service.name}</Text>
+          <Text style={styles.serviceDetails}>
+            {service.category || 'Sem categoria'} • {service.duration_minutes} min • {money(service.price)}
+          </Text>
+          <Text style={[styles.subtitle, { marginTop: 6 }]}>
+            {service.active ? 'Ativo' : 'Desativado'}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 18, marginTop: 14 }}>
+            <TouchableOpacity onPress={() => beginEditService(service)}>
+              <Text style={{ color: colors.mocha, fontWeight: '600' }}>Editar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => toggleService(service)}>
+              <Text style={{ color: colors.mocha, fontWeight: '600' }}>
+                {service.active ? 'Desativar' : 'Ativar'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
+      {showServiceForm && (
+        <View style={[styles.simpleServiceCard, { marginTop: 12, padding: 18 }]}>
+          <Text style={styles.sectionTitle}>{editingId ? 'Editar serviço' : 'Novo serviço'}</Text>
+          {[
+            ['name', 'Nome do serviço'],
+            ['description', 'Descrição'],
+            ['category', 'Categoria'],
+            ['price', 'Preço (ex.: 120,00)'],
+            ['duration_minutes', 'Duração em minutos (ex.: 90)'],
+          ].map(([field, title]) => (
+            <View key={field}>
+              <Text style={styles.inputLabel}>{title}</Text>
+              <TextInput
+                style={styles.loginInput}
+                value={serviceForm[field]}
+                onChangeText={(value) => setServiceForm((prev) => ({ ...prev, [field]: value }))}
+                keyboardType={field === 'price' ? 'decimal-pad' : field === 'duration_minutes' ? 'number-pad' : 'default'}
+                placeholder={title}
+              />
+            </View>
+          ))}
+          <TouchableOpacity
+            onPress={() => setServiceForm((prev) => ({ ...prev, active: !prev.active }))}
+            style={{ paddingVertical: 12 }}
+          >
+            <Text style={{ color: colors.ink }}>
+              {serviceForm.active ? '☑ Serviço ativo' : '☐ Serviço desativado'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.confirmButton, savingService && { opacity: 0.6 }]}
+            onPress={saveService}
+            disabled={savingService}
+          >
+            <Text style={styles.confirmButtonText}>{savingService ? 'Salvando...' : 'Salvar serviço'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { setShowServiceForm(false); setServiceError(''); }} style={{ padding: 14 }}>
+            <Text style={{ textAlign: 'center', color: colors.mocha }}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      <Text style={[styles.sectionTitle, { marginTop: 30 }]}>Agenda de hoje</Text>
       <View style={styles.adminAgendaCard}>
-        <Text style={styles.serviceTitle}>Nenhum dado carregado</Text>
-        <Text style={styles.subtitle}>A agenda real será conectada ao Supabase na próxima etapa.</Text>
+        <Text style={styles.subtitle}>Ainda não conectada ao Supabase.</Text>
       </View>
       <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
         <Ionicons name="log-out-outline" size={18} color={colors.mocha} />
@@ -197,10 +373,10 @@ function MainApp({ user, isAdmin, onLogout }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.mainContent}>
-        {currentScreen === 'Home' && <HomeScreen />}
-        {currentScreen === 'Booking' && <BookingScreen />}
-        {currentScreen === 'Portfolio' && <PortfolioScreen />}
-        {currentScreen === 'Admin' && isAdmin && <AdminScreen />}
+        {currentScreen === 'Home' && HomeScreen()}
+        {currentScreen === 'Booking' && BookingScreen()}
+        {currentScreen === 'Portfolio' && PortfolioScreen()}
+        {currentScreen === 'Admin' && isAdmin && AdminScreen()}
       </View>
 
       <View style={styles.bottomNav}>
