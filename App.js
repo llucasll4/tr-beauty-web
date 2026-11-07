@@ -28,11 +28,36 @@ const colors = {
   border: '#EBE5DF',
 };
 
+const brazilClock = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
+const brazilDate = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+function localDateKey(date) {
+  const parts = Object.fromEntries(brazilDate.formatToParts(date).map(x => [x.type, x.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+function futureDates() {
+  const today = localDateKey(new Date());
+  const base = new Date(`${today}T12:00:00Z`);
+  return Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(base.getTime() + i * 86400000);
+    return { key: d.toISOString().slice(0, 10), label: d.toLocaleDateString('pt-BR', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: '2-digit' }) };
+  });
+}
+const readableDate = (iso) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
 function MainApp({ user, isAdmin, onLogout }) {
   const [currentScreen, setCurrentScreen] = useState('Home');
-  const [selectedDate, setSelectedDate] = useState('14');
-  const [selectedTime, setSelectedTime] = useState('14:00');
-  const [bookingNotice, setBookingNotice] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(localDateKey(new Date()));
+  const [selectedTime, setSelectedTime] = useState(null);
+  const [slots, setSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [bookingError, setBookingError] = useState('');
+  const [bookingSuccess, setBookingSuccess] = useState('');
+  const [bookingSaving, setBookingSaving] = useState(false);
+  const [appointments, setAppointments] = useState([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [appointmentsError, setAppointmentsError] = useState('');
+  const [statusSavingId, setStatusSavingId] = useState(null);
   const [services, setServices] = useState([]);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [serviceError, setServiceError] = useState('');
@@ -132,6 +157,79 @@ function MainApp({ user, isAdmin, onLogout }) {
   });
   const activeServices = services.filter((service) => service.active);
 
+  const dates = futureDates();
+  const chosenService = activeServices.find(s => s.id === selectedServiceId);
+
+  useEffect(() => {
+    if (!selectedServiceId || !activeServices.some(s => s.id === selectedServiceId)) {
+      setSelectedServiceId(activeServices[0]?.id || null);
+    }
+  }, [services, selectedServiceId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSelectedTime(null);
+    setSlots([]);
+    setBookingError('');
+    if (!selectedServiceId || !selectedDate) return;
+    setSlotsLoading(true);
+    supabase.rpc('available_slots', { p_service_id: selectedServiceId, p_date: selectedDate })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) throw error;
+        setSlots(data || []);
+      })
+      .catch(err => { if (!cancelled) setBookingError('Não foi possível consultar os horários: ' + err.message); })
+      .finally(() => { if (!cancelled) setSlotsLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedServiceId, selectedDate, bookingSuccess]);
+
+  async function confirmBooking() {
+    if (!selectedServiceId || !selectedTime || bookingSaving) return;
+    setBookingSaving(true);
+    setBookingError('');
+    setBookingSuccess('');
+    try {
+      const { error } = await supabase.rpc('book_appointment', {
+        p_service_id: selectedServiceId, p_starts_at: selectedTime,
+      });
+      if (error) throw error;
+      setBookingSuccess('Reserva enviada com sucesso! Aguarde a confirmação do estúdio.');
+      setSelectedTime(null);
+      if (isAdmin) await loadAppointments();
+    } catch (err) {
+      setBookingError('Não foi possível reservar: ' + err.message);
+      setBookingSuccess('');
+    } finally { setBookingSaving(false); }
+  }
+
+  async function loadAppointments() {
+    if (!isAdmin) return;
+    setAppointmentsLoading(true);
+    setAppointmentsError('');
+    try {
+      const { data, error } = await supabase.from('appointments')
+        .select('id,client_id,starts_at,ends_at,status,price_at_booking,services(name),profiles(full_name)')
+        .gte('starts_at', new Date(Date.now() - 86400000).toISOString())
+        .order('starts_at', { ascending: true }).limit(150);
+      if (error) throw error;
+      setAppointments(data || []);
+    } catch (err) {
+      setAppointmentsError('Não foi possível carregar a agenda: ' + err.message);
+    } finally { setAppointmentsLoading(false); }
+  }
+  useEffect(() => { if (isAdmin) loadAppointments(); }, [isAdmin]);
+
+  async function changeAppointmentStatus(item, nextStatus) {
+    if (!isAdmin || statusSavingId) return;
+    setStatusSavingId(item.id);
+    setAppointmentsError('');
+    const { error } = await supabase.from('appointments').update({ status: nextStatus }).eq('id', item.id);
+    if (error) setAppointmentsError('Falha ao atualizar: ' + error.message);
+    else await loadAppointments();
+    setStatusSavingId(null);
+  }
+
   const HomeScreen = () => (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <View style={styles.header}>
@@ -188,65 +286,56 @@ function MainApp({ user, isAdmin, onLogout }) {
   const BookingScreen = () => (
     <View style={{ flex: 1 }}>
       <View style={styles.pageHeader}>
-        <Text style={styles.pageTitle}>Novo Agendamento</Text>
-        <Text style={styles.subtitle}>Prévia: os horários ainda não são reais.</Text>
+        <Text style={styles.pageTitle}>Novo agendamento</Text>
+        <Text style={styles.subtitle}>Terça a sábado, das 09h às 18h • horário de Brasília</Text>
       </View>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.sectionTitle}>1. Serviços disponíveis</Text>
-        {activeServices.map((service) => (
-          <View key={service.id} style={styles.bookingCard}>
-            <View>
+        <Text style={styles.sectionTitle}>1. Escolha o serviço</Text>
+        {activeServices.map(service => (
+          <TouchableOpacity key={service.id}
+            style={[styles.bookingCard, selectedServiceId === service.id && styles.bookingCardSelected, { marginBottom: 10 }]}
+            onPress={() => { setBookingSuccess(''); setSelectedServiceId(service.id); }}>
+            <View style={{ flex: 1 }}>
               <Text style={styles.serviceTitle}>{service.name}</Text>
               <Text style={styles.serviceDetails}>{service.duration_minutes} min • {money(service.price)}</Text>
             </View>
-          </View>
+            <Ionicons name={selectedServiceId === service.id ? 'radio-button-on' : 'radio-button-off'} size={22} color={colors.mocha} />
+          </TouchableOpacity>
         ))}
-        {activeServices.length === 0 && <Text style={styles.subtitle}>Nenhum serviço disponível.</Text>}
-        <Text style={[styles.subtitle, { marginTop: 10 }]}>Agendamentos ainda estão em demonstração. Nenhuma reserva será registrada.</Text>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>2. Escolha a data</Text>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          {['14 Ter', '15 Qua', '16 Qui'].map((d) => {
-            const day = d.split(' ')[0];
-            const selected = selectedDate === day;
+        {!activeServices.length && <Text style={styles.subtitle}>Nenhum serviço ativo disponível.</Text>}
+        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>2. Escolha a data</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+          {dates.map(date => (
+            <TouchableOpacity key={date.key} onPress={() => { setBookingSuccess(''); setSelectedDate(date.key); }}
+              style={[selectedDate === date.key ? styles.dateBoxSelected : styles.dateBox, { marginRight: 8 }]}>
+              <Text style={selectedDate === date.key ? styles.optionSelectedText : styles.optionText}>{date.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>3. Horários disponíveis</Text>
+        {slotsLoading && <ActivityIndicator color={colors.mocha} />}
+        {!slotsLoading && chosenService && slots.length === 0 && !bookingError && (
+          <Text style={styles.subtitle}>Não há horários disponíveis nesta data. Escolha outra.</Text>
+        )}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
+          {slots.map(item => {
+            const chosen = selectedTime === item.starts_at;
             return (
-              <TouchableOpacity
-                key={d}
-                style={selected ? styles.dateBoxSelected : styles.dateBox}
-                onPress={() => setSelectedDate(day)}
-              >
-                <Text style={selected ? styles.optionSelectedText : styles.optionText}>{d}</Text>
+              <TouchableOpacity key={item.starts_at} onPress={() => { setSelectedTime(item.starts_at); setBookingSuccess(''); }}
+                style={chosen ? styles.timeBoxSelected : styles.timeBox}>
+                <Text style={chosen ? styles.optionSelectedText : styles.optionText}>{brazilClock.format(new Date(item.starts_at))}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>3. Horário</Text>
-        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-          {['09:00', '10:30', '14:00', '15:30'].map((time) => {
-            const selected = selectedTime === time;
-            return (
-              <TouchableOpacity
-                key={time}
-                style={selected ? styles.timeBoxSelected : styles.timeBox}
-                onPress={() => setSelectedTime(time)}
-              >
-                <Text style={selected ? styles.optionSelectedText : styles.optionText}>{time}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {!!bookingError && <Text style={[styles.loginError, { marginTop: 15 }]}>{bookingError}</Text>}
+        {!!bookingSuccess && <Text style={[styles.successText, { marginTop: 15 }]}>{bookingSuccess}</Text>}
       </ScrollView>
       <View style={styles.footerBooking}>
-        {bookingNotice && (
-          <Text style={{ color: colors.mocha, marginBottom: 12 }}>
-            Isto é apenas uma demonstração. Nenhuma reserva foi registrada.
-          </Text>
-        )}
-        <TouchableOpacity
-          style={styles.confirmButton}
-          onPress={() => setBookingNotice(true)}
-        >
-          <Text style={styles.confirmButtonText}>Demonstração de reserva</Text>
+        {!!selectedTime && <Text style={[styles.subtitle, { marginBottom: 8 }]}>Selecionado: {readableDate(selectedTime)}</Text>}
+        <TouchableOpacity disabled={!selectedTime || bookingSaving || slotsLoading} onPress={confirmBooking}
+          style={[styles.confirmButton, (!selectedTime || bookingSaving || slotsLoading) && { opacity: 0.45 }]}>
+          {bookingSaving ? <ActivityIndicator color={colors.white} /> : <Text style={styles.confirmButtonText}>Confirmar reserva</Text>}
         </TouchableOpacity>
       </View>
     </View>
@@ -288,6 +377,28 @@ function MainApp({ user, isAdmin, onLogout }) {
           <Text style={styles.adminStatValue}>—</Text>
         </View>
       </View>
+      <Text style={styles.sectionTitle}>Agendamentos reais</Text>
+      <TouchableOpacity onPress={loadAppointments} style={{ paddingVertical: 10 }}>
+        <Text style={{ color: colors.mocha, fontWeight: '600' }}>Atualizar agenda</Text>
+      </TouchableOpacity>
+      {appointmentsLoading && <ActivityIndicator color={colors.mocha} />}
+      {!!appointmentsError && <Text style={styles.loginError}>{appointmentsError}</Text>}
+      {!appointmentsLoading && appointments.length === 0 && <Text style={[styles.subtitle, { marginBottom: 20 }]}>Sem agendamentos recentes ou futuros.</Text>}
+      {appointments.map(item => (
+        <View key={item.id} style={[styles.adminAgendaCard, { marginBottom: 12 }]}>
+          <Text style={styles.serviceTitle}>{readableDate(item.starts_at)}</Text>
+          <Text style={styles.serviceDetails}>{item.services?.name || 'Serviço'} • {money(item.price_at_booking)}</Text>
+          <Text style={[styles.subtitle, { marginTop: 5 }]}>Cliente: {item.profiles?.full_name || 'Nome não cadastrado'}</Text>
+          <Text style={[styles.subtitle, { marginTop: 5 }]}>Status: {({ pending:'Pendente', confirmed:'Confirmado', completed:'Concluído', cancelled:'Cancelado' })[item.status] || item.status}</Text>
+          {(item.status === 'pending' || item.status === 'confirmed') && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 14 }}>
+              {item.status === 'pending' && <TouchableOpacity disabled={!!statusSavingId} onPress={() => changeAppointmentStatus(item, 'confirmed')}><Text style={styles.adminAction}>Confirmar</Text></TouchableOpacity>}
+              {item.status === 'confirmed' && <TouchableOpacity disabled={!!statusSavingId} onPress={() => changeAppointmentStatus(item, 'completed')}><Text style={styles.adminAction}>Concluir</Text></TouchableOpacity>}
+              <TouchableOpacity disabled={!!statusSavingId} onPress={() => changeAppointmentStatus(item, 'cancelled')}><Text style={styles.adminAction}>Cancelar</Text></TouchableOpacity>
+            </View>
+          )}
+        </View>
+      ))}
       <Text style={styles.sectionTitle}>Gerenciar serviços</Text>
       <TouchableOpacity style={styles.confirmButton} onPress={beginNewService}>
         <Text style={styles.confirmButtonText}>+ Novo serviço</Text>
@@ -601,6 +712,8 @@ const styles = StyleSheet.create({
   navItem: { alignItems: 'center', minWidth: 55 },
   navText: { fontSize: 10, color: colors.muted, marginTop: 4 },
   navTextActive: { color: colors.ink, fontWeight: 'bold' },
+  adminAction: { color: colors.mocha, fontWeight: '700' },
+  successText: { color: '#247047', fontWeight: '600' },
   logoutButton: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: 8, paddingVertical: 14, marginTop: 26 },
   logoutText: { color: colors.mocha, fontWeight: '600' },
   loadingPage: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
