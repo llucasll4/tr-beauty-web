@@ -227,7 +227,7 @@ export default function AdminClients() {
             <Text style={s.smallNote}>Valor dos serviços, não comprovante de pagamento recebido.</Text>
             <Text style={s.totalLabel}>TR Points da cliente</Text>
             <Text style={s.totalValue}>{loyalty ? Number(loyalty.balance || 0).toLocaleString('pt-BR') + ' pontos' : '—'}</Text>
-            {!!loyaltyError && <Text style={s.error}>{loyaltyError}</Text>
+            {!!loyaltyError && <Text style={s.error}>{loyaltyError}</Text>}
             {!!whatsappNumber(selected.phone) && (
               <TouchableOpacity style={s.whatsapp} onPress={openWhatsapp}>
                 <Ionicons name="logo-whatsapp" size={20} color={C.white}/>
