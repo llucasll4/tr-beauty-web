@@ -177,16 +177,15 @@ export default function PortfolioScreen({ adminMode = false, services = [] }) {
       }
       saved = true;
 
+      let oldFileCleanupError = false;
       if (uploadedPath && editing && editing.image_path !== uploadedPath) {
         const { error: oldFileError } = await supabase.storage.from(BUCKET)
           .remove([editing.image_path]);
-        if (oldFileError) {
-          setNotice('Foto salva, mas não foi possível limpar o arquivo antigo do armazenamento.');
-        }
+        oldFileCleanupError = !!oldFileError;
       }
-      if (!uploadedPath || !editing || !editing.image_path || !notice) {
-        setNotice(editing ? 'Trabalho atualizado com sucesso.' : 'Trabalho publicado com sucesso.');
-      }
+      setNotice(oldFileCleanupError
+        ? 'Foto salva, mas não foi possível limpar o arquivo antigo do armazenamento.'
+        : (editing ? 'Trabalho atualizado com sucesso.' : 'Trabalho publicado com sucesso.'));
       resetForm();
       await load();
     } catch (e) {
@@ -237,14 +236,23 @@ export default function PortfolioScreen({ adminMode = false, services = [] }) {
     try {
       const a = Number(photo.sort_order) || 0;
       const b = Number(other.sort_order) || 0;
-      // Reindexa na ordem visual para acomodar fotos antigas com a mesma posição.
-      const ordered = [...photos];
-      ordered.splice(index, 1);
-      ordered.splice(index + direction, 0, photo);
-      for (let i = 0; i < ordered.length; i++) {
-        const { error: updateError } = await supabase.from('portfolio_photos')
-          .update({ sort_order: i }).eq('id', ordered[i].id);
-        if (updateError) throw updateError;
+      if (a !== b) {
+        const { error: firstError } = await supabase.from('portfolio_photos')
+          .update({ sort_order: b }).eq('id', photo.id);
+        if (firstError) throw firstError;
+        const { error: secondError } = await supabase.from('portfolio_photos')
+          .update({ sort_order: a }).eq('id', other.id);
+        if (secondError) throw secondError;
+      } else {
+        // Normaliza índices legados com a mesma posição.
+        const ordered = [...photos];
+        ordered.splice(index, 1);
+        ordered.splice(index + direction, 0, photo);
+        for (let i = 0; i < ordered.length; i++) {
+          const { error: updateError } = await supabase.from('portfolio_photos')
+            .update({ sort_order: i }).eq('id', ordered[i].id);
+          if (updateError) throw updateError;
+        }
       }
       setNotice('Ordem do portfólio atualizada.');
       await load();
