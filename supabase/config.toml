@@ -1,0 +1,5 @@
+# P4 — chamada privada pelo Supabase Cron
+# A função valida o header x-tr-cron-secret antes de consultar dados ou enviar mensagens.
+# A opção de JWT embutida não deve ser usada com o segredo personalizado do Cron.
+[functions.p4-notifications]
+verify_jwt = false
