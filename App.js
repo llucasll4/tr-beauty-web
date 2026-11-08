@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import AuthScreen from './AuthScreen';
 import ProfileScreen from './ProfileScreen';
+import AdminCalendar from './AdminCalendar';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2;
@@ -451,28 +452,7 @@ function MainApp({ user, isAdmin, onLogout }) {
           <Text style={styles.adminStatValue}>—</Text>
         </View>
       </View>
-      <Text style={styles.sectionTitle}>Agendamentos reais</Text>
-      <TouchableOpacity onPress={loadAppointments} style={{ paddingVertical: 10 }}>
-        <Text style={{ color: colors.mocha, fontWeight: '600' }}>Atualizar agenda</Text>
-      </TouchableOpacity>
-      {appointmentsLoading && <ActivityIndicator color={colors.mocha} />}
-      {!!appointmentsError && <Text style={styles.loginError}>{appointmentsError}</Text>}
-      {!appointmentsLoading && appointments.length === 0 && <Text style={[styles.subtitle, { marginBottom: 20 }]}>Sem agendamentos recentes ou futuros.</Text>}
-      {appointments.map(item => (
-        <View key={item.id} style={[styles.adminAgendaCard, { marginBottom: 12 }]}>
-          <Text style={styles.serviceTitle}>{readableDate(item.starts_at)}</Text>
-          <Text style={styles.serviceDetails}>{item.services?.name || 'Serviço'} • {money(item.price_at_booking)}</Text>
-          <Text style={[styles.subtitle, { marginTop: 5 }]}>Cliente: {item.profiles?.full_name || 'Nome não cadastrado'}</Text>
-          <Text style={[styles.subtitle, { marginTop: 5 }]}>Status: {({ pending:'Pendente', confirmed:'Confirmado', completed:'Concluído', cancelled:'Cancelado' })[item.status] || item.status}</Text>
-          {(item.status === 'pending' || item.status === 'confirmed') && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 14 }}>
-              {item.status === 'pending' && <TouchableOpacity disabled={!!statusSavingId} onPress={() => changeAppointmentStatus(item, 'confirmed')}><Text style={styles.adminAction}>Confirmar</Text></TouchableOpacity>}
-              {item.status === 'confirmed' && <TouchableOpacity disabled={!!statusSavingId} onPress={() => changeAppointmentStatus(item, 'completed')}><Text style={styles.adminAction}>Concluir</Text></TouchableOpacity>}
-              <TouchableOpacity disabled={!!statusSavingId} onPress={() => changeAppointmentStatus(item, 'cancelled')}><Text style={styles.adminAction}>Cancelar</Text></TouchableOpacity>
-            </View>
-          )}
-        </View>
-      ))}
+      <AdminCalendar />
       <Text style={styles.sectionTitle}>Gerenciar serviços</Text>
       <TouchableOpacity style={styles.confirmButton} onPress={beginNewService}>
         <Text style={styles.confirmButtonText}>+ Novo serviço</Text>
@@ -544,10 +524,6 @@ function MainApp({ user, isAdmin, onLogout }) {
           </TouchableOpacity>
         </View>
       )}
-      <Text style={[styles.sectionTitle, { marginTop: 30 }]}>Agenda de hoje</Text>
-      <View style={styles.adminAgendaCard}>
-        <Text style={styles.subtitle}>Ainda não conectada ao Supabase.</Text>
-      </View>
       <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
         <Ionicons name="log-out-outline" size={18} color={colors.mocha} />
         <Text style={styles.logoutText}>Sair da conta</Text>
