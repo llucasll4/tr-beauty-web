@@ -20,6 +20,7 @@ import ProfileScreen from './ProfileScreen';
 import AdminCalendar from './AdminCalendar';
 import AdminClients from './AdminClients';
 import LoyaltyCard from './LoyaltyCard';
+import PortfolioScreen from './PortfolioScreen';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2;
@@ -409,26 +410,6 @@ function MainApp({ user, isAdmin, onLogout }) {
     </View>
   );
 
-  const PortfolioScreen = () => (
-    <View style={{ flex: 1 }}>
-      <View style={styles.pageHeader}>
-        <Text style={styles.pageTitle}>Inspirações</Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.grid}>
-          {[1, 2, 3, 4].map((item) => (
-            <View key={item} style={styles.imageCard}>
-              <View style={styles.mockImage}>
-                <Ionicons name="image-outline" size={40} color={colors.muted} />
-                <Text style={{ color: colors.muted, marginTop: 10 }}>Foto {item}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
-  );
-
   const AdminScreen = () => (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: '#F4F5F7', flexGrow: 1 }]}>
       <View style={{ marginBottom: 20, marginTop: 10 }}>
@@ -440,6 +421,7 @@ function MainApp({ user, isAdmin, onLogout }) {
           ['agenda', 'Agenda'],
           ['clientes', 'Clientes'],
           ['servicos', 'Serviços'],
+          ['portfolio', 'Portfólio'],
         ].map(([id, label]) => (
           <TouchableOpacity
             key={id}
@@ -454,6 +436,7 @@ function MainApp({ user, isAdmin, onLogout }) {
       </View>
       {adminSection === 'agenda' && <AdminCalendar />}
       {adminSection === 'clientes' && <AdminClients />}
+      {adminSection === 'portfolio' && <PortfolioScreen adminMode services={services} />}
       {adminSection === 'servicos' && (
         <View>
         <Text style={styles.sectionTitle}>Gerenciar serviços</Text>
@@ -541,7 +524,7 @@ function MainApp({ user, isAdmin, onLogout }) {
       <View style={styles.mainContent}>
         {currentScreen === 'Home' && HomeScreen()}
         {currentScreen === 'Booking' && BookingScreen()}
-        {currentScreen === 'Portfolio' && PortfolioScreen()}
+        {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
         {currentScreen === 'Profile' && <ProfileScreen user={user} onLogout={onLogout}/>}
         {currentScreen === 'Admin' && isAdmin && AdminScreen()}
       </View>
