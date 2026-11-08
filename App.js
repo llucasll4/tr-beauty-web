@@ -18,6 +18,7 @@ import { supabase } from './supabase';
 import AuthScreen from './AuthScreen';
 import ProfileScreen from './ProfileScreen';
 import AdminCalendar from './AdminCalendar';
+import AdminClients from './AdminClients';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2;
@@ -81,6 +82,7 @@ function buildCalendar(monthKey, allowedDateKeys) {
 
 function MainApp({ user, isAdmin, onLogout }) {
   const [currentScreen, setCurrentScreen] = useState('Home');
+  const [adminSection, setAdminSection] = useState('agenda');
   const [selectedServiceId, setSelectedServiceId] = useState(null);
   const [selectedDate, setSelectedDate] = useState(initialBookableDate);
   const [calendarMonth, setCalendarMonth] = useState(() => initialBookableDate().slice(0, 7));
@@ -438,90 +440,102 @@ function MainApp({ user, isAdmin, onLogout }) {
 
   const AdminScreen = () => (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: '#F4F5F7', flexGrow: 1 }]}>
-      <View style={{ marginBottom: 24, marginTop: 10 }}>
+      <View style={{ marginBottom: 20, marginTop: 10 }}>
         <Text style={styles.greeting}>Painel Admin 👩‍💻</Text>
-        <Text style={styles.subtitle}>Visão geral do estúdio • dados de exemplo</Text>
+        <Text style={styles.subtitle}>Agenda, clientes e serviços do estúdio</Text>
       </View>
-      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-        <View style={styles.adminStatCard}>
-          <Text style={styles.adminStatLabel}>Faturamento hoje</Text>
-          <Text style={styles.adminStatValue}>—</Text>
-        </View>
-        <View style={styles.adminStatCard}>
-          <Text style={styles.adminStatLabel}>Agendamentos</Text>
-          <Text style={styles.adminStatValue}>—</Text>
-        </View>
+      <View style={styles.adminTabs}>
+        {[
+          ['agenda', 'Agenda'],
+          ['clientes', 'Clientes'],
+          ['servicos', 'Serviços'],
+        ].map(([id, label]) => (
+          <TouchableOpacity
+            key={id}
+            style={[styles.adminTab, adminSection === id && styles.adminTabActive]}
+            onPress={() => setAdminSection(id)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: adminSection === id }}
+          >
+            <Text style={[styles.adminTabText, adminSection === id && styles.adminTabTextActive]}>{label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
-      <AdminCalendar />
-      <Text style={styles.sectionTitle}>Gerenciar serviços</Text>
-      <TouchableOpacity style={styles.confirmButton} onPress={beginNewService}>
-        <Text style={styles.confirmButtonText}>+ Novo serviço</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={loadServices} style={{ paddingVertical: 14 }}>
-        <Text style={{ color: colors.mocha }}>Atualizar lista</Text>
-      </TouchableOpacity>
-      {servicesLoading && <ActivityIndicator color={colors.mocha} />}
-      {!!serviceError && <Text style={styles.loginError}>{serviceError}</Text>}
-      {services.map((service) => (
-        <View key={service.id} style={[styles.simpleServiceCard, { marginBottom: 12 }]}>
-          <Text style={styles.serviceTitle}>{service.name}</Text>
-          <Text style={styles.serviceDetails}>
-            {service.category || 'Sem categoria'} • {service.duration_minutes} min • {money(service.price)}
-          </Text>
-          <Text style={[styles.subtitle, { marginTop: 6 }]}>
-            {service.active ? 'Ativo' : 'Desativado'}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 18, marginTop: 14 }}>
-            <TouchableOpacity onPress={() => beginEditService(service)}>
-              <Text style={{ color: colors.mocha, fontWeight: '600' }}>Editar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => toggleService(service)}>
-              <Text style={{ color: colors.mocha, fontWeight: '600' }}>
-                {service.active ? 'Desativar' : 'Ativar'}
+      {adminSection === 'agenda' && <AdminCalendar />}
+      {adminSection === 'clientes' && <AdminClients />}
+      {adminSection === 'servicos' && (
+        <View>
+        <Text style={styles.sectionTitle}>Gerenciar serviços</Text>
+        <TouchableOpacity style={styles.confirmButton} onPress={beginNewService}>
+          <Text style={styles.confirmButtonText}>+ Novo serviço</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={loadServices} style={{ paddingVertical: 14 }}>
+          <Text style={{ color: colors.mocha }}>Atualizar lista</Text>
+        </TouchableOpacity>
+        {servicesLoading && <ActivityIndicator color={colors.mocha} />}
+        {!!serviceError && <Text style={styles.loginError}>{serviceError}</Text>}
+        {services.map((service) => (
+          <View key={service.id} style={[styles.simpleServiceCard, { marginBottom: 12 }]}>
+            <Text style={styles.serviceTitle}>{service.name}</Text>
+            <Text style={styles.serviceDetails}>
+              {service.category || 'Sem categoria'} • {service.duration_minutes} min • {money(service.price)}
+            </Text>
+            <Text style={[styles.subtitle, { marginTop: 6 }]}>
+              {service.active ? 'Ativo' : 'Desativado'}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 18, marginTop: 14 }}>
+              <TouchableOpacity onPress={() => beginEditService(service)}>
+                <Text style={{ color: colors.mocha, fontWeight: '600' }}>Editar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => toggleService(service)}>
+                <Text style={{ color: colors.mocha, fontWeight: '600' }}>
+                  {service.active ? 'Desativar' : 'Ativar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+        {showServiceForm && (
+          <View style={[styles.simpleServiceCard, { marginTop: 12, padding: 18 }]}>
+            <Text style={styles.sectionTitle}>{editingId ? 'Editar serviço' : 'Novo serviço'}</Text>
+            {[
+              ['name', 'Nome do serviço'],
+              ['description', 'Descrição'],
+              ['category', 'Categoria'],
+              ['price', 'Preço (ex.: 120,00)'],
+              ['duration_minutes', 'Duração em minutos (ex.: 90)'],
+            ].map(([field, title]) => (
+              <View key={field}>
+                <Text style={styles.inputLabel}>{title}</Text>
+                <TextInput
+                  style={styles.loginInput}
+                  value={serviceForm[field]}
+                  onChangeText={(value) => setServiceForm((prev) => ({ ...prev, [field]: value }))}
+                  keyboardType={field === 'price' ? 'decimal-pad' : field === 'duration_minutes' ? 'number-pad' : 'default'}
+                  placeholder={title}
+                />
+              </View>
+            ))}
+            <TouchableOpacity
+              onPress={() => setServiceForm((prev) => ({ ...prev, active: !prev.active }))}
+              style={{ paddingVertical: 12 }}
+            >
+              <Text style={{ color: colors.ink }}>
+                {serviceForm.active ? '☑ Serviço ativo' : '☐ Serviço desativado'}
               </Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.confirmButton, savingService && { opacity: 0.6 }]}
+              onPress={saveService}
+              disabled={savingService}
+            >
+              <Text style={styles.confirmButtonText}>{savingService ? 'Salvando...' : 'Salvar serviço'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setShowServiceForm(false); setServiceError(''); }} style={{ padding: 14 }}>
+              <Text style={{ textAlign: 'center', color: colors.mocha }}>Cancelar</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-      ))}
-      {showServiceForm && (
-        <View style={[styles.simpleServiceCard, { marginTop: 12, padding: 18 }]}>
-          <Text style={styles.sectionTitle}>{editingId ? 'Editar serviço' : 'Novo serviço'}</Text>
-          {[
-            ['name', 'Nome do serviço'],
-            ['description', 'Descrição'],
-            ['category', 'Categoria'],
-            ['price', 'Preço (ex.: 120,00)'],
-            ['duration_minutes', 'Duração em minutos (ex.: 90)'],
-          ].map(([field, title]) => (
-            <View key={field}>
-              <Text style={styles.inputLabel}>{title}</Text>
-              <TextInput
-                style={styles.loginInput}
-                value={serviceForm[field]}
-                onChangeText={(value) => setServiceForm((prev) => ({ ...prev, [field]: value }))}
-                keyboardType={field === 'price' ? 'decimal-pad' : field === 'duration_minutes' ? 'number-pad' : 'default'}
-                placeholder={title}
-              />
-            </View>
-          ))}
-          <TouchableOpacity
-            onPress={() => setServiceForm((prev) => ({ ...prev, active: !prev.active }))}
-            style={{ paddingVertical: 12 }}
-          >
-            <Text style={{ color: colors.ink }}>
-              {serviceForm.active ? '☑ Serviço ativo' : '☐ Serviço desativado'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.confirmButton, savingService && { opacity: 0.6 }]}
-            onPress={saveService}
-            disabled={savingService}
-          >
-            <Text style={styles.confirmButtonText}>{savingService ? 'Salvando...' : 'Salvar serviço'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => { setShowServiceForm(false); setServiceError(''); }} style={{ padding: 14 }}>
-            <Text style={{ textAlign: 'center', color: colors.mocha }}>Cancelar</Text>
-          </TouchableOpacity>
+        )}
         </View>
       )}
       <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
@@ -716,6 +730,11 @@ const styles = StyleSheet.create({
   adminStatLabel: { fontSize: 12, color: colors.muted },
   adminStatValue: { fontSize: 20, fontWeight: 'bold', color: colors.ink, marginTop: 5 },
   adminAgendaCard: { backgroundColor: colors.white, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
+  adminTabs: { flexDirection: 'row', backgroundColor: colors.nude, borderRadius: 12, padding: 4, marginBottom: 21, gap: 3 },
+  adminTab: { flex: 1, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
+  adminTabActive: { backgroundColor: colors.white },
+  adminTabText: { fontSize: 13, fontWeight: '600', color: colors.mocha },
+  adminTabTextActive: { color: colors.ink, fontWeight: '700' },
   bottomNav: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border, paddingBottom: Platform.OS === 'ios' ? 24 : 12 },
   navItem: { alignItems: 'center', minWidth: 55 },
   navText: { fontSize: 10, color: colors.muted, marginTop: 4 },
