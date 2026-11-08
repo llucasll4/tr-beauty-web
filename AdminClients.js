@@ -66,6 +66,8 @@ export default function AdminClients() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState('');
   const [notice, setNotice] = useState('');
+  const [loyalty, setLoyalty] = useState(null);
+  const [loyaltyError, setLoyaltyError] = useState('');
   const selected = clients.find(c => c.id === selectedId) || null;
 
   useEffect(() => {
@@ -111,6 +113,27 @@ export default function AdminClients() {
     }).finally(() => { if (active) setHistoryLoading(false); });
     return () => { active = false; };
   }, [selectedId, historyPage, refresh]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setLoyalty(null);
+      setLoyaltyError('');
+      return;
+    }
+    let active = true;
+    setLoyalty(null);
+    setLoyaltyError('');
+    supabase.rpc('admin_client_loyalty', { p_client_id: selectedId })
+      .then(({ data, error: requestError }) => {
+        if (!active) return;
+        if (requestError) throw requestError;
+        setLoyalty(data || null);
+      })
+      .catch(e => {
+        if (active) setLoyaltyError('Falha ao consultar TR Points: ' + (e?.message || 'erro'));
+      });
+    return () => { active = false; };
+  }, [selectedId, refresh]);
 
   function performSearch() {
     const next = searchText.trim();
@@ -202,6 +225,9 @@ export default function AdminClients() {
             <Text style={s.totalLabel}>Total dos serviços concluídos</Text>
             <Text style={s.totalValue}>{cash(selected.completed_total)}</Text>
             <Text style={s.smallNote}>Valor dos serviços, não comprovante de pagamento recebido.</Text>
+            <Text style={s.totalLabel}>TR Points da cliente</Text>
+            <Text style={s.totalValue}>{loyalty ? Number(loyalty.balance || 0).toLocaleString('pt-BR') + ' pontos' : '—'}</Text>
+            {!!loyaltyError && <Text style={s.error}>{loyaltyError}</Text>
             {!!whatsappNumber(selected.phone) && (
               <TouchableOpacity style={s.whatsapp} onPress={openWhatsapp}>
                 <Ionicons name="logo-whatsapp" size={20} color={C.white}/>

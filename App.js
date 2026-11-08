@@ -19,6 +19,7 @@ import AuthScreen from './AuthScreen';
 import ProfileScreen from './ProfileScreen';
 import AdminCalendar from './AdminCalendar';
 import AdminClients from './AdminClients';
+import LoyaltyCard from './LoyaltyCard';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2;
@@ -284,17 +285,7 @@ function MainApp({ user, isAdmin, onLogout }) {
         </View>
       </View>
 
-      <View style={styles.loyaltyCard}>
-        <View style={styles.loyaltyHeader}>
-          <Text style={styles.loyaltyBrand}>TR BEAUTY CONCEPT</Text>
-          <Ionicons name="diamond-outline" size={20} color={colors.ink} />
-        </View>
-        <Text style={styles.pointsValue}>—</Text>
-        <Text style={styles.pointsLabel}>TR Points</Text>
-        <Text style={styles.pointsSubtitle}>
-          Seu saldo aparecerá aqui quando o programa de fidelidade estiver ativo.
-        </Text>
-      </View>
+      <LoyaltyCard />
 
       <TouchableOpacity style={styles.primaryButton} onPress={() => setCurrentScreen('Booking')}>
         <Text style={styles.primaryButtonText}>Agendar Meu Horário</Text>
