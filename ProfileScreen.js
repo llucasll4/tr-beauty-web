@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
+import NotificationPreferences from './NotificationPreferences';
 
 const C={ink:'#2C2C2C',muted:'#8E8E93',mocha:'#7A655B',border:'#EBE5DF'};
 export default function ProfileScreen({user,onLogout}) {
@@ -59,6 +60,7 @@ export default function ProfileScreen({user,onLogout}) {
   <Text style={s.help}>Alterar o e-mail exige confirmação pelo Supabase. Editar o telefone de contato não altera o número usado para login por SMS.</Text>
   {!!message&&<Text style={{color:error?'#B42318':'#276749',marginVertical:14}}>{message}</Text>}
   <TouchableOpacity style={s.button} onPress={saveProfile} disabled={busy}><Text style={s.buttonText}>{busy?'Salvando...':'Salvar alterações'}</Text></TouchableOpacity>
+  <NotificationPreferences userId={user.id}/>
   <TouchableOpacity style={s.logout} onPress={onLogout}><Ionicons name="log-out-outline" size={18} color={C.mocha}/><Text style={{color:C.mocha,fontWeight:'600'}}>Sair da conta</Text></TouchableOpacity>
  </ScrollView>;
 }
