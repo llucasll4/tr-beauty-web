@@ -20,6 +20,7 @@ import { supabase } from './supabase';
 import AuthScreen from './AuthScreen';
 import ProfileScreen from './ProfileScreen';
 import AdminCalendar from './AdminCalendar';
+import AdminManualBooking from './AdminManualBooking';
 import AdminClients from './AdminClients';
 import LoyaltyCard from './LoyaltyCard';
 import TRPointsDashboard from './TRPointsDashboard';
@@ -89,7 +90,10 @@ function buildCalendar(monthKey, allowedDateKeys) {
 }
 
 function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home', initialServiceId = null }) {
-  const [currentScreen, setCurrentScreen] = useState(initialScreen);
+  const [currentScreen, setCurrentScreen] = useState(isAdmin ? 'Admin' : initialScreen);
+  useEffect(() => {
+    if(isAdmin && ['Booking','Profile','Points'].includes(currentScreen)) setCurrentScreen('Admin');
+  },[isAdmin,currentScreen]);
   const [homeAvatar, setHomeAvatar] = useState(null);
 
   useEffect(() => {
@@ -358,8 +362,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           <Text style={styles.subtitle}>Pronta para renovar suas unhas?</Text>
         </View>
         <TouchableOpacity style={styles.profileIcon} accessibilityRole="button"
-          accessibilityLabel={user ? 'Abrir perfil' : 'Entrar ou criar conta'}
-          onPress={() => user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
+          accessibilityLabel={isAdmin ? 'Abrir meu perfil no Admin' : user ? 'Abrir perfil' : 'Entrar ou criar conta'}
+          onPress={() => isAdmin ? (setAdminSection('perfil'),setCurrentScreen('Admin')) : user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
           {user && homeAvatar
             ? <Image source={{ uri: homeAvatar }} style={styles.homeAvatar} resizeMode="cover"
                 accessibilityLabel="Minha foto de perfil" />
@@ -367,7 +371,20 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         </TouchableOpacity>
       </View>
 
-      {user ? <LoyaltyCard onOpenDetails={() => setCurrentScreen('Points')} /> : (
+      {isAdmin ? (
+        <View style={styles.guestCard}>
+          <View style={styles.guestCardHeader}>
+            <Ionicons name="settings-outline" size={24} color={colors.mocha}/>
+            <Text style={styles.guestCardTitle}>Área administrativa</Text>
+          </View>
+          <Text style={styles.guestCardText}>Acesse a agenda, as clientes e as ferramentas do estúdio em um só lugar.</Text>
+          <TouchableOpacity style={styles.guestCardButton} onPress={() => setCurrentScreen('Admin')}
+            accessibilityRole="button">
+            <Text style={styles.guestCardButtonText}>Abrir painel Admin</Text>
+            <Ionicons name="arrow-forward-outline" size={16} color={colors.mocha}/>
+          </TouchableOpacity>
+        </View>
+      ) : user ? <LoyaltyCard onOpenDetails={() => setCurrentScreen('Points')} /> : (
         <View style={styles.guestCard}>
           <View style={styles.guestCardHeader}>
             <Ionicons name="sparkles-outline" size={25} color={colors.mocha}/>
@@ -383,8 +400,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       )}
 
       <TouchableOpacity style={styles.primaryButton}
-        onPress={() => { setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } }}>
-        <Text style={styles.primaryButtonText}>Agendar Meu Horário</Text>
+        onPress={() => { if (isAdmin) { setAdminSection('manual'); setCurrentScreen('Admin'); } else { setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } } }}>
+        <Text style={styles.primaryButtonText}>{isAdmin ? 'Agendar cliente' : 'Agendar Meu Horário'}</Text>
         <Ionicons name="calendar-outline" size={20} color={colors.background} />
       </TouchableOpacity>
 
@@ -590,7 +607,17 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     </View>
   );
 
-  const AdminScreen = () => (
+  const AdminScreen = () => adminSection === 'perfil' ? (
+    <View style={{flex:1}}>
+      <TouchableOpacity
+        accessibilityRole="button" onPress={() => setAdminSection('agenda')}
+        style={{paddingHorizontal:22,paddingVertical:15,flexDirection:'row',alignItems:'center',gap:8}}>
+        <Ionicons name="arrow-back-outline" size={19} color={colors.mocha}/>
+        <Text style={{color:colors.mocha,fontWeight:'700'}}>Voltar ao painel Admin</Text>
+      </TouchableOpacity>
+      <ProfileScreen user={user} onLogout={onLogout} onAvatarChange={setHomeAvatar}/>
+    </View>
+  ) : (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: '#F4F5F7', flexGrow: 1 }]}>
       <View style={{ marginBottom: 20, marginTop: 10 }}>
         <Text style={styles.greeting}>Painel Admin 👩‍💻</Text>
@@ -598,14 +625,16 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         style={{ marginBottom: 21 }}
-        contentContainerStyle={[styles.adminTabs, { minWidth: 690, marginBottom: 0 }]}>
+        contentContainerStyle={[styles.adminTabs, { minWidth: 950, marginBottom: 0 }]}>
         {[
           ['agenda', 'Agenda'],
+          ['manual', 'Agendar cliente'],
           ['clientes', 'Clientes'],
           ['servicos', 'Serviços'],
           ['portfolio', 'Portfólio'],
           ['financeiro', 'Financeiro'],
           ['pontos','TR Points'],
+          ['perfil','Meu perfil'],
         ].map(([id, label]) => (
           <TouchableOpacity
             key={id}
@@ -619,6 +648,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         ))}
       </ScrollView>
       {adminSection === 'agenda' && <AdminCalendar />}
+      {adminSection === 'manual' && <AdminManualBooking services={services} onShowAgenda={() => setAdminSection('agenda')}/>}
       {adminSection === 'clientes' && <AdminClients />}
       {adminSection === 'portfolio' && <PortfolioScreen adminMode services={services} />}
       {adminSection === 'financeiro' && <FinancialDashboard />}
@@ -710,7 +740,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.mainContent}>
         {currentScreen === 'Home' && HomeScreen()}
-        {currentScreen === 'Booking' && (user
+        {currentScreen === 'Booking' && !isAdmin && (user
           ? (bookingView === 'new' ? BookingScreen() : (
               <ClientAppointments userId={user.id}
                 refreshSignal={myAppointmentsRefresh}
@@ -719,8 +749,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             ))
           : GuestBookingScreen())}
         {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
-        {currentScreen === 'Points' && user && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')} onRedeem={() => { setPaymentMethod('points');setBookingView('new');setBookingSuccess('');setCurrentScreen('Booking'); }}/>}
-        {currentScreen === 'Profile' && user && <ProfileScreen
+        {currentScreen === 'Points' && user && !isAdmin && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')} onRedeem={() => { setPaymentMethod('points');setBookingView('new');setBookingSuccess('');setCurrentScreen('Booking'); }}/>}
+        {currentScreen === 'Profile' && user && !isAdmin && <ProfileScreen
           user={user}
           onLogout={onLogout}
           onAvatarChange={setHomeAvatar}
@@ -733,19 +763,19 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           <Ionicons name={currentScreen === 'Home' ? 'home' : 'home-outline'} size={24} color={currentScreen === 'Home' ? colors.ink : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Home' && styles.navTextActive]}>Início</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}
+        {!isAdmin && <TouchableOpacity style={styles.navItem}
           onPress={() => { setCurrentScreen('Booking'); if (user) { setBookingView('hub'); setBookingSuccess(''); } }}>
           <Ionicons name={currentScreen === 'Booking' ? 'calendar' : 'calendar-outline'} size={24} color={currentScreen === 'Booking' ? colors.ink : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Booking' && styles.navTextActive]}>{user ? 'Reservas' : 'Agendar'}</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>}
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Portfolio')}>
           <Ionicons name={currentScreen === 'Portfolio' ? 'image' : 'image-outline'} size={24} color={currentScreen === 'Portfolio' ? colors.ink : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Portfolio' && styles.navTextActive]}>Galeria</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
+        {!isAdmin && <TouchableOpacity style={styles.navItem} onPress={() => isAdmin ? (setAdminSection('perfil'),setCurrentScreen('Admin')) : user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
           <Ionicons name={currentScreen === 'Profile' ? 'person' : 'person-outline'} size={24} color={currentScreen === 'Profile' ? colors.ink : colors.muted}/>
           <Text style={[styles.navText,currentScreen === 'Profile' && styles.navTextActive]}>{user ? 'Perfil' : 'Entrar'}</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>}
         {isAdmin && (
           <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Admin')}>
             <Ionicons name={currentScreen === 'Admin' ? 'settings' : 'settings-outline'} size={24} color={currentScreen === 'Admin' ? colors.ink : colors.muted} />
