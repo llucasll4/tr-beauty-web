@@ -232,7 +232,7 @@ Deno.serve(async (request: Request) => {
           .select('id,starts_at,status,services(name),profiles(full_name,phone)')
           .eq('id', job.appointment_id).single(),
         db.from('notification_preferences')
-          .select('email_enabled,whatsapp_enabled')
+          .select('email_enabled,whatsapp_enabled,whatsapp_consented_at')
           .eq('user_id', job.client_id).maybeSingle(),
       ]);
       if (appointmentError || preferenceError || !appointment) {
@@ -248,7 +248,7 @@ Deno.serve(async (request: Request) => {
       };
       const channelEnabled = job.channel === 'email'
         ? preference?.email_enabled
-        : preference?.whatsapp_enabled;
+        : preference?.whatsapp_enabled && !!preference?.whatsapp_consented_at;
       if (!validStatus[job.event_type] || !channelEnabled) {
         status = 'skipped';
         lastError = 'Status mudou ou consentimento desativado';
