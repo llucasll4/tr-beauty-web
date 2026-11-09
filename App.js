@@ -894,6 +894,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         />}
         {currentScreen === 'Profile' && user && !isAdmin && <ProfileScreen
           user={user}
+          requirePhone
           onLogout={onLogout}
           onAvatarChange={setHomeAvatar}
           onNameChange={setHomeName}
