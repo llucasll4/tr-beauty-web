@@ -211,8 +211,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     if (!serviceForm.name.trim() || !serviceForm.price.trim() ||
         !Number.isFinite(price) || price < 0 ||
         !Number.isInteger(duration) || duration <= 0 ||
-        !Number.isSafeInteger(redeemPoints) || redeemPoints < 100) {
-      setServiceError('Preencha nome, preço, duração e custo de resgate em pontos (inteiro de pelo menos 100).');
+        !Number.isSafeInteger(redeemPoints) || redeemPoints < 1) {
+      setServiceError('Preencha nome, preço, duração e custo de resgate em pontos (inteiro de pelo menos 1).');
       return;
     }
     setSavingService(true);
