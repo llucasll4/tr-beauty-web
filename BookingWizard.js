@@ -110,6 +110,7 @@ export default function BookingWizard({
     setStep(step-1);
   }
   function chooseService(item){
+    setSelectedTime(null);
     setSelectedServiceId(item.id);
     onClearError();
     if(!user){onRequireAuth(item.id);return;}
@@ -286,7 +287,7 @@ export default function BookingWizard({
                 accessibilityLabel={'Dia '+cell.day+' de '+monthName(calendarMonth)}
                 accessibilityState={{disabled:!cell.enabled,selected:selectedDate===cell.key}}
                 disabled={!cell.enabled}
-                onPress={()=>{setSelectedDate(cell.key);onClearError();}}
+                onPress={()=>{setSelectedTime(null);setSelectedDate(cell.key);onClearError();}}
                 style={[s.dayCircle,selectedDate===cell.key&&s.daySelected]}>
                 <Text style={[s.dayLabel,
                   !cell.enabled&&s.dayDisabled,
