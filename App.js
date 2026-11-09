@@ -25,6 +25,7 @@ import AdminCalendar from './AdminCalendar';
 import AdminManualBooking from './AdminManualBooking';
 import AdminClients from './AdminClients';
 import LoyaltyCard from './LoyaltyCard';
+import NextSelfCareCard from './NextSelfCareCard';
 import TRPointsDashboard from './TRPointsDashboard';
 import AdminPointsPrices from './AdminPointsPrices';
 import PortfolioScreen from './PortfolioScreen';
@@ -629,6 +630,15 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           </TouchableOpacity>
         </View>
       ) : user ? <View>
+        <NextSelfCareCard
+          userId={user.id}
+          refreshSignal={myAppointmentsRefresh}
+          onOpenAppointments={() => {
+            setBookingView('hub');
+            setBookingSuccess('');
+            setCurrentScreen('Booking');
+          }}
+        />
         <LoyaltyCard onOpenDetails={() => setCurrentScreen('Points')} />
       </View> : (
         <View style={styles.guestCard}>
