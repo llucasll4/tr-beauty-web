@@ -38,7 +38,8 @@ const redirect = () => {
 
 export default function AuthScreen({
   recovery = false,
-  onRecoveryDone = () => {}
+  onRecoveryDone = () => {},
+  onBack = null
 }) {
   const [mode, setMode] = useState(
     recovery ? 'newPassword' : 'login'
@@ -463,6 +464,14 @@ export default function AuthScreen({
           />
         )}
 
+        {!!onBack && !recovery && (
+          <TouchableOpacity onPress={onBack} disabled={busy} style={s.backToSite}
+            accessibilityRole="button" accessibilityLabel="Continuar navegando sem conta">
+            <Ionicons name="arrow-back-outline" size={19} color={C.mocha}/>
+            <Text style={s.backToSiteText}>Continuar navegando sem conta</Text>
+          </TouchableOpacity>
+        )}
+
         {/* RODAPÉ */}
         <Text style={s.foot}>
           Seus dados são protegidos pela
@@ -574,6 +583,8 @@ const s = StyleSheet.create({
     textAlign: 'center'
   },
 
+  backToSite: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', paddingVertical: 15, marginTop: 14 },
+  backToSiteText: { fontSize: 13, fontWeight: '700', color: C.mocha },
   foot: {
     textAlign: 'center',
     color: C.muted,
