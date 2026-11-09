@@ -9,9 +9,9 @@ import {supabase} from './supabase';
 // Mesma linguagem de composição das quatro telas de referência,
 // usando a paleta creme, nude e café da TR Beauty Concept.
 const C={
-  bg:'#F8F4EF', paper:'#FFFCF8', white:'#FFFFFF', ink:'#2C2826',
-  mocha:'#6C5144', secondary:'#856F63', subtle:'#B0A196',
-  border:'#E8DED5', nude:'#EFE5DB', nudeLight:'#F5EDE6',
+  bg:'#FDFBF7', paper:'#FFFFFF', white:'#FFFFFF', ink:'#2C2C2C',
+  mocha:'#7A655B', secondary:'#856F63', subtle:'#B0A196',
+  border:'#EBE5DF', nude:'#EBE5DF', nudeLight:'#F5EDE6',
   green:'#27734D', danger:'#A73546',
 };
 const clock=new Intl.DateTimeFormat('pt-BR',{
