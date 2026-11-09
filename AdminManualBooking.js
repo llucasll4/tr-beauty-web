@@ -35,6 +35,7 @@ export default function AdminManualBooking({services=[],onShowAgenda=()=>{}}){
   const [slot,setSlot]=useState(null);
   const [slotsLoading,setSlotsLoading]=useState(false);
   const [slotsError,setSlotsError]=useState('');
+  const [slotRefresh,setSlotRefresh]=useState(0);
   const [notes,setNotes]=useState('');
   const [saving,setSaving]=useState(false);
   const [saveError,setSaveError]=useState('');
@@ -87,7 +88,7 @@ export default function AdminManualBooking({services=[],onShowAgenda=()=>{}}){
       .catch(err=>{if(active)setSlotsError('Não foi possível carregar horários: '+(err?.message||'erro desconhecido'));})
       .finally(()=>{if(active)setSlotsLoading(false);});
     return()=>{active=false;};
-  },[serviceId,day,done]);
+  },[serviceId,day,done,slotRefresh]);
 
   async function save(){
     if(saving||!selectedClient||!selectedService||!slot||slotsLoading)return;
@@ -106,6 +107,13 @@ export default function AdminManualBooking({services=[],onShowAgenda=()=>{}}){
       setNotes('');
     }catch(err){
       setSaveError('Não foi possível agendar: '+(err?.message||'erro desconhecido'));
+      // O horário pode ter sido ocupado por outra reserva entre seleção e envio.
+      // Retorna automaticamente à lista renovada de horários.
+      if(err?.code==='23P01' ||
+         /horário (indisponível|acabou de ser reservado)/i.test(err?.message||'')){
+        setSlot(null);
+        setSlotRefresh(value=>value+1);
+      }
     }finally{setSaving(false);}
   }
 
