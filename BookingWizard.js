@@ -103,6 +103,15 @@ export default function BookingWizard({
     return()=>{mounted=false;};
   },[active.map(x=>x.id).join(',')]);
 
+  // Se outro pedido ocupou o horário durante a confirmação,
+  // volte à seleção para mostrar os horários recém-consultados.
+  useEffect(() => {
+    if(step === 3 && !selectedTime &&
+       /horário (indisponível|acabou de ser reservado)/i.test(error || '')) {
+      setStep(2);
+    }
+  }, [step, selectedTime, error]);
+
   function back(){
     onClearError();
     if(step===1){onExit();return;}
@@ -313,7 +322,7 @@ export default function BookingWizard({
             </TouchableOpacity>;
           })}
         </View>
-        <Text style={s.guide}>Horários dinâmicos com 15 min de preparação após cada atendimento · horário de Brasília</Text>
+        <Text style={s.guide}>Terça e quinta: atendimento + preparação até 18h. Quarta, sexta e sábado: último início às 20h. Intervalo de 15 min entre atendimentos · Brasília</Text>
       </>}
 
       {step===3&&service&&<>
