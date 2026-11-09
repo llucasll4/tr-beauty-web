@@ -8,7 +8,7 @@ const fmtDate = v => new Date(v).toLocaleDateString('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric',
 });
 
-export default function LoyaltyCard() {
+export default function LoyaltyCard({ onOpenDetails }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -59,6 +59,11 @@ export default function LoyaltyCard() {
           </View>}
         </>
       )}
+      <TouchableOpacity style={s.details} onPress={onOpenDetails} accessibilityRole="button"
+        accessibilityLabel="Ver extrato completo do TR Points">
+        <Text style={s.detailsText}>Ver meu extrato e serviços</Text>
+        <Ionicons name="arrow-forward-outline" size={17} color="#FFFFFF"/>
+      </TouchableOpacity>
       <TouchableOpacity style={s.refresh} onPress={load} disabled={loading} accessibilityLabel="Atualizar TR Points">
         <Ionicons name="refresh" size={15} color={C.mocha}/>
         <Text style={s.refreshText}>Atualizar saldo</Text>
@@ -82,6 +87,8 @@ const s = StyleSheet.create({
   historyRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   historyDate: { fontSize: 12, color: C.muted },
   historyPoints: { fontSize: 12, color: '#246344', fontWeight: '700' },
+  details: { backgroundColor: C.ink, paddingVertical: 13, paddingHorizontal: 15, borderRadius: 11, marginTop: 18, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 9 },
+  detailsText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   refresh: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 15, paddingVertical: 5 },
   refreshText: { marginLeft: 6, color: C.mocha, fontSize: 12, fontWeight: '700' },
 });
