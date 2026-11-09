@@ -49,7 +49,7 @@ export default function ClientAppointments({ userId, onNewBooking, refreshSignal
   const PAGE_SIZE = 50;
   const getPage = useCallback(async (from) => {
     return await supabase.from('appointments')
-      .select('id,starts_at,ends_at,status,price_at_booking,services(name)')
+      .select('id,starts_at,ends_at,status,price_at_booking,points_redeemed,services(name)')
       .eq('client_id', userId)
       .order('starts_at', { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
@@ -191,8 +191,9 @@ export default function ClientAppointments({ userId, onNewBooking, refreshSignal
                 </Text>
               </View>
               <View style={s.cardFoot}>
-                <Text style={s.valueLabel}>Valor do serviço</Text>
-                <Text style={s.value}>{money(item.price_at_booking)}</Text>
+                <Text style={s.valueLabel}>{item.points_redeemed ? 'Resgatado com TR Points' : 'Valor do serviço'}</Text>
+                <Text style={s.value}>{item.points_redeemed ?
+                  Number(item.points_redeemed).toLocaleString('pt-BR')+' pts' : money(item.price_at_booking)}</Text>
               </View>
               {item.status === 'pending' && (
                 <Text style={s.statusNote}>O estúdio ainda precisa confirmar seu pedido.</Text>
