@@ -61,7 +61,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
    const {data,error:e}=await supabase.from('profiles').select('full_name,phone,avatar_path').eq('id',user.id).single();
    if(!active)return;
    if(e)say('Erro ao carregar perfil: '+e.message,true);
-   else{setName(data.full_name||'');setPhone(formatBrazilMobile(data.phone||''));setAvatarPath(data.avatar_path||null);}
+   else{setName(data.full_name||'');setPhone(requirePhone?formatBrazilMobile(data.phone||''):(data.phone||''));setAvatarPath(data.avatar_path||null);}
    setLoading(false);
  })();return()=>{active=false;};},[user.id]);
  const avatarUrl=optimisticAvatar || (avatarPath
@@ -80,8 +80,8 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
    setEditorLoading(false);setEditorError('');setFileKey(v=>v+1);
  }
  async function saveProfile(){if(busy)return;setBusy(true);say('');try{
-   const normalizedPhone = phone.trim() ? normalizeBrazilMobile(phone) : null;
-   if ((requirePhone || phone.trim()) && !normalizedPhone) {
+   const normalizedPhone = requirePhone ? normalizeBrazilMobile(phone) : (phone.trim() || null);
+   if (requirePhone && !normalizedPhone) {
      throw new Error('Informe um celular válido com DDD, como (11) 91234-5678.');
    }
    const {error:e}=await supabase.from('profiles').update({full_name:name.trim(),phone:normalizedPhone}).eq('id',user.id);
@@ -172,9 +172,9 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
   </View>:<Text style={s.help}>Edição de foto disponível na versão web.</Text>}</View>
   <Text style={s.label}>Nome</Text><TextInput style={s.input} value={name} onChangeText={setName} placeholder="Nome completo"/>
   <Text style={s.label}>Celular com DDD {requirePhone?'*':''}</Text><TextInput
-     style={s.input} value={phone} onChangeText={v=>setPhone(formatBrazilMobile(v))}
+     style={s.input} value={phone} onChangeText={v=>setPhone(requirePhone?formatBrazilMobile(v):v)}
      keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber"
-     placeholder="(11) 91234-5678" maxLength={15}/>
+     placeholder="(11) 91234-5678" maxLength={requirePhone?15:undefined}/>
   <Text style={s.label}>E-mail</Text><TextInput style={s.input} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="seuemail@exemplo.com"/>
   <Text style={s.help}>Alterar o e-mail exige confirmação pelo Supabase. O celular é validado pelo formato brasileiro e usado para contato. Mensagens pelo WhatsApp exigem autorização separada.</Text>
   {!!message&&<Text style={{color:error?'#B42318':'#276749',marginVertical:14}}>{message}</Text>}
