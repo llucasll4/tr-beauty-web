@@ -204,6 +204,7 @@ export default function AdminManualBooking({services=[],onShowAgenda=()=>{}}){
           <Text style={[s.timeText,slot===x.starts_at&&s.timeTextActive]}>{timeFormat.format(new Date(x.starts_at))}</Text>
         </TouchableOpacity>)}
       </View>
+      <Text style={s.helper}>Horários calculados conforme os atendimentos existentes, com 15 min de preparação após cada serviço.</Text>
       <Text style={s.step}>5. Observações (opcional)</Text>
       <TextInput value={notes} onChangeText={setNotes} multiline maxLength={400}
         placeholder="Informações úteis para a agenda"
