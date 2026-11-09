@@ -180,7 +180,7 @@ export default function AdminNotifications({
           <View style={s.sectionTitleRow}>
             <Ionicons name="mail-unread-outline" size={19} color={C.mocha}/>
             <Text style={s.section}>Não lidas</Text>
-            <View style={s.unreadCountPill}><Text style={s.unreadCountText}>{unreadCount}</Text></View>
+            <View style={s.unreadCountPill}><Text style={s.unreadCountText}>{filter==='all'?unreadCount:unread.length}</Text></View>
           </View>
         </View>
         {unread.length?unread.map(item=>renderAlert(item,false)):
