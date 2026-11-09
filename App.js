@@ -22,6 +22,7 @@ import ProfileScreen from './ProfileScreen';
 import AdminCalendar from './AdminCalendar';
 import AdminClients from './AdminClients';
 import LoyaltyCard from './LoyaltyCard';
+import TRPointsDashboard from './TRPointsDashboard';
 import PortfolioScreen from './PortfolioScreen';
 import FinancialDashboard from './FinancialDashboard';
 import ClientAppointments from './ClientAppointments';
@@ -328,7 +329,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         </TouchableOpacity>
       </View>
 
-      {user ? <LoyaltyCard /> : (
+      {user ? <LoyaltyCard onOpenDetails={() => setCurrentScreen('Points')} /> : (
         <View style={styles.guestCard}>
           <View style={styles.guestCardHeader}>
             <Ionicons name="sparkles-outline" size={25} color={colors.mocha}/>
@@ -639,6 +640,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             ))
           : GuestBookingScreen())}
         {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
+        {currentScreen === 'Points' && user && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')}/>}
         {currentScreen === 'Profile' && user && <ProfileScreen
           user={user}
           onLogout={onLogout}
