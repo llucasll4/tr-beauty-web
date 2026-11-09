@@ -720,8 +720,8 @@ export default function App() {
 
   return <MainApp key={user?.id || 'guest'}
     user={user} isAdmin={isAdmin} onLogout={handleLogout} onRequestAuth={requestAuth}
-    initialScreen={user ? returnScreen : 'Home'}
-    initialServiceId={user ? returnServiceId : null}/>;
+    initialScreen={returnScreen}
+    initialServiceId={returnServiceId}/>;
 }
 
 const styles = StyleSheet.create({
