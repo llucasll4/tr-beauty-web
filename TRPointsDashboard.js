@@ -45,7 +45,7 @@ function Item({icon,label,value,detail,positive}) {
   </View>;
 }
 
-export default function TRPointsDashboard({userId,onBack}) {
+export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{}}) {
   const {width} = useWindowDimensions();
   const [overview,setOverview] = useState(null);
   const [totals,setTotals] = useState(emptyTotals);
@@ -177,6 +177,12 @@ export default function TRPointsDashboard({userId,onBack}) {
                 : 'Faltam '+digits(goal-balance)+' pontos para a meta de '+digits(goal)+'.'}
           </Text>
         </View>
+        <TouchableOpacity onPress={onRedeem} accessibilityRole="button"
+          accessibilityLabel="Usar TR Points para agendar um serviço" style={s.redeemCta}>
+          <Ionicons name="gift-outline" size={22} color="#FFFFFF"/>
+          <Text style={s.redeemCtaText}>Usar meus pontos para agendar</Text>
+          <Ionicons name="arrow-forward-outline" size={18} color="#FFFFFF"/>
+        </TouchableOpacity>
         <View style={[s.metrics,{flexDirection:twoCols?'row':'column'}]}>
           <Item icon="arrow-up-circle-outline" label="Pontos ganhos" value={totals.total_earned}
             positive detail="Todos os créditos do extrato"/>
@@ -298,6 +304,8 @@ const s=StyleSheet.create({
   progressTrack:{height:9,borderRadius:6,backgroundColor:'#D6CBC1',marginTop:22,overflow:'hidden'},
   progressFill:{backgroundColor:C.ink,height:9,borderRadius:6},
   heroHelp:{color:C.mocha,fontSize:12,lineHeight:19,marginTop:12},
+  redeemCta:{backgroundColor:C.ink,borderRadius:13,padding:17,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:10,marginBottom:18},
+  redeemCtaText:{fontWeight:'700',fontSize:14,color:'#FFFFFF',flexShrink:1},
   metrics:{gap:12,marginBottom:19},
   metric:{flex:1,backgroundColor:C.white,borderWidth:1,borderColor:C.border,borderRadius:15,padding:17},
   metricTitleRow:{flexDirection:'row',alignItems:'center',gap:8},
