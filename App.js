@@ -22,6 +22,7 @@ import AdminClients from './AdminClients';
 import LoyaltyCard from './LoyaltyCard';
 import PortfolioScreen from './PortfolioScreen';
 import FinancialDashboard from './FinancialDashboard';
+import ClientAppointments from './ClientAppointments';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2;
@@ -85,6 +86,8 @@ function buildCalendar(monthKey, allowedDateKeys) {
 
 function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home', initialServiceId = null }) {
   const [currentScreen, setCurrentScreen] = useState(initialScreen);
+  const [bookingView, setBookingView] = useState(initialScreen === 'Booking' && initialServiceId ? 'new' : 'hub');
+  const [myAppointmentsRefresh, setMyAppointmentsRefresh] = useState(0);
   const [adminSection, setAdminSection] = useState('agenda');
   const [selectedServiceId, setSelectedServiceId] = useState(initialServiceId);
   const [selectedDate, setSelectedDate] = useState(initialBookableDate);
@@ -240,8 +243,10 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         p_service_id: selectedServiceId, p_starts_at: selectedTime,
       });
       if (error) throw error;
-      setBookingSuccess('Reserva enviada com sucesso! Aguarde a confirmação do estúdio.');
+      setBookingSuccess('Pedido enviado! Acompanhe sua reserva na lista de próximos agendamentos.');
       setSelectedTime(null);
+      setBookingView('hub');
+      setMyAppointmentsRefresh(value => value + 1);
       if (isAdmin) await loadAppointments();
     } catch (err) {
       setBookingError('Não foi possível reservar: ' + err.message);
@@ -305,7 +310,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         </View>
       )}
 
-      <TouchableOpacity style={styles.primaryButton} onPress={() => setCurrentScreen('Booking')}>
+      <TouchableOpacity style={styles.primaryButton}
+        onPress={() => { setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } }}>
         <Text style={styles.primaryButtonText}>Agendar Meu Horário</Text>
         <Ionicons name="calendar-outline" size={20} color={colors.background} />
       </TouchableOpacity>
@@ -377,9 +383,15 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
 
   const BookingScreen = () => (
     <View style={{ flex: 1 }}>
-      <View style={styles.pageHeader}>
+      <View style={[styles.pageHeader, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Voltar aos meus agendamentos"
+          style={{ padding: 7 }} onPress={() => { setBookingView('hub'); setBookingSuccess(''); }}>
+          <Ionicons name="arrow-back-outline" size={24} color={colors.ink}/>
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
         <Text style={styles.pageTitle}>Novo agendamento</Text>
         <Text style={styles.subtitle}>Terça a sábado, das 09h às 18h • horário de Brasília</Text>
+        </View>
       </View>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.sectionTitle}>1. Escolha o serviço</Text>
@@ -585,7 +597,14 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.mainContent}>
         {currentScreen === 'Home' && HomeScreen()}
-        {currentScreen === 'Booking' && (user ? BookingScreen() : GuestBookingScreen())}
+        {currentScreen === 'Booking' && (user
+          ? (bookingView === 'new' ? BookingScreen() : (
+              <ClientAppointments userId={user.id}
+                refreshSignal={myAppointmentsRefresh}
+                notice={bookingSuccess}
+                onNewBooking={() => { setBookingSuccess(''); setBookingView('new'); }}/>
+            ))
+          : GuestBookingScreen())}
         {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
         {currentScreen === 'Profile' && user && <ProfileScreen user={user} onLogout={onLogout}/>}
         {currentScreen === 'Admin' && isAdmin && AdminScreen()}
@@ -598,7 +617,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Booking')}>
           <Ionicons name={currentScreen === 'Booking' ? 'calendar' : 'calendar-outline'} size={24} color={currentScreen === 'Booking' ? colors.ink : colors.muted} />
-          <Text style={[styles.navText, currentScreen === 'Booking' && styles.navTextActive]}>Agendar</Text>
+          <Text style={[styles.navText, currentScreen === 'Booking' && styles.navTextActive]}>{user ? 'Reservas' : 'Agendar'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Portfolio')}>
           <Ionicons name={currentScreen === 'Portfolio' ? 'image' : 'image-outline'} size={24} color={currentScreen === 'Portfolio' ? colors.ink : colors.muted} />
