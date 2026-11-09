@@ -17,6 +17,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import AuthScreen from './AuthScreen';
+import CompletePhoneScreen from './CompletePhoneScreen';
+import { normalizeBrazilMobile } from './phoneUtils';
 import ProfileScreen from './ProfileScreen';
 import AdminCalendar from './AdminCalendar';
 import AdminManualBooking from './AdminManualBooking';
@@ -892,6 +894,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         />}
         {currentScreen === 'Profile' && user && !isAdmin && <ProfileScreen
           user={user}
+          requirePhone
           onLogout={onLogout}
           onAvatarChange={setHomeAvatar}
           onNameChange={setHomeName}
@@ -932,6 +935,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
 export default function App() {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [needsPhone, setNeedsPhone] = useState(false);
   const [loading, setLoading] = useState(true);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -947,6 +951,7 @@ export default function App() {
       if (!session?.user) {
         setUser(null);
         setIsAdmin(false);
+        setNeedsPhone(false);
         setLoading(false);
         return;
       }
@@ -954,12 +959,13 @@ export default function App() {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role,phone')
           .eq('id', session.user.id)
           .single();
         if (error) throw error;
         if (active) {
           setIsAdmin(data.role === 'admin');
+          setNeedsPhone(data.role !== 'admin' && !normalizeBrazilMobile(data.phone));
           setUser(session.user);
           setErrorMessage('');
         }
@@ -967,6 +973,7 @@ export default function App() {
         if (active) {
           setUser(null);
           setIsAdmin(false);
+          setNeedsPhone(false);
           setErrorMessage('Não foi possível carregar seu perfil. Verifique o Supabase e tente novamente.');
         }
       } finally {
@@ -1026,6 +1033,11 @@ export default function App() {
 
   if (!user && authVisible) {
     return <AuthScreen onBack={() => setAuthVisible(false)} />;
+  }
+
+  if (user && needsPhone && !isAdmin) {
+    return <CompletePhoneScreen user={user}
+      onSaved={() => setNeedsPhone(false)} onLogout={handleLogout}/>;
   }
 
   return <MainApp key={user?.id || 'guest'}
