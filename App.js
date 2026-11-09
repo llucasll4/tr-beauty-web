@@ -128,6 +128,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [bookingConfirmationVisible, setBookingConfirmationVisible] = useState(false);
   const [bookingSaving, setBookingSaving] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [bookingWasRedeemed, setBookingWasRedeemed] = useState(false);
   const [pointsBalance, setPointsBalance] = useState(0);
   const [pointsEnabled, setPointsEnabled] = useState(false);
   const [pointsLoading, setPointsLoading] = useState(false);
@@ -307,6 +308,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       setBookingSuccess('');
       setSelectedTime(null);
       setPaymentMethod('cash');
+      setBookingWasRedeemed(withPoints);
       setBookingView('hub');
       setMyAppointmentsRefresh(value => value + 1);
       setCurrentScreen('Home');
@@ -714,7 +716,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             ))
           : GuestBookingScreen())}
         {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
-        {currentScreen === 'Points' && user && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')}/>}
+        {currentScreen === 'Points' && user && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')} onRedeem={() => { setPaymentMethod('points');setBookingView('new');setBookingSuccess('');setCurrentScreen('Booking'); }}/>}
         {currentScreen === 'Profile' && user && <ProfileScreen
           user={user}
           onLogout={onLogout}
@@ -757,7 +759,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             </View>
             <Text style={styles.confirmationTitle}>Pedido de agendamento enviado!</Text>
             <Text style={styles.confirmationMessage}>
-              Seu pedido foi registrado com sucesso e está aguardando a confirmação do estúdio.
+              {bookingWasRedeemed ? 'Seu resgate foi registrado e os pontos foram descontados. O atendimento aguarda a confirmação do estúdio.' : 'Seu pedido foi registrado com sucesso e está aguardando a confirmação do estúdio.'}
             </Text>
             <Text style={styles.confirmationHint}>
               Para acompanhar seus pedidos futuros e visualizar agendamentos anteriores,
