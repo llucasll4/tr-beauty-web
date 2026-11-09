@@ -54,7 +54,7 @@ export default function AdminWhatsApp(){
     <View style={s.panel}>
       <Text style={s.panelTitle}>Confirmação inteligente de presença</Text>
       <Text style={s.helper}>Após aprovação dos modelos, as mensagens de confirmação e lembrete
-        poderão conter o botão **Confirmar presença**. A resposta será validada pelo
+        poderão conter o botão Confirmar presença. A resposta será validada pelo
         webhook da Meta e aparecerá na agenda, sem alterar o status de aprovação.</Text>
       <View style={s.divider}/>
       <Text style={s.panelTitle}>Etapas necessárias na Meta</Text>
