@@ -496,11 +496,12 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     setBookingSuccess('');
     try {
       const withPoints=paymentMethod==='points';
-      const { error } = await supabase.rpc(
+      const { data, error } = await supabase.rpc(
         withPoints ? 'book_appointment_with_points' : 'book_appointment', {
           p_service_id: selectedServiceId, p_starts_at: selectedTime,
         });
       if (error) throw error;
+      if (!data) throw new Error('O servidor não retornou a identificação da reserva. Consulte seus agendamentos antes de tentar novamente.');
       // Pedido recebido: não confundir envio com confirmação do estúdio.
       setBookingSuccess('');
       setSelectedTime(null);
