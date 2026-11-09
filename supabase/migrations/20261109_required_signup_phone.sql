@@ -10,7 +10,7 @@ set search_path = ''
 as $function$
 declare
   v_digits text := pg_catalog.regexp_replace(
-    pg_catalog.coalesce(p_phone,''), '[^0-9]', '', 'g');
+    coalesce(p_phone,''), '[^0-9]', '', 'g');
   v_ddd text;
 begin
   if char_length(v_digits)=11 then
