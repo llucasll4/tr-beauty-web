@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -28,6 +28,7 @@ import AdminPointsPrices from './AdminPointsPrices';
 import PortfolioScreen from './PortfolioScreen';
 import FinancialDashboard from './FinancialDashboard';
 import ClientAppointments from './ClientAppointments';
+import ClientNotifications from './ClientNotifications';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2;
@@ -41,6 +42,15 @@ const colors = {
   border: '#EBE5DF',
 };
 
+const greetingClock = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false,
+});
+function greetingForTime(timestamp) {
+  const hour = Number(greetingClock.format(new Date(timestamp)));
+  if (hour >= 5 && hour < 12) return 'Bom dia';
+  if (hour >= 12 && hour < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
 const brazilClock = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
 const brazilDate = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
 function localDateKey(date) {
@@ -95,17 +105,109 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     if(isAdmin && ['Booking','Profile','Points'].includes(currentScreen)) setCurrentScreen('Admin');
   },[isAdmin,currentScreen]);
   const [homeAvatar, setHomeAvatar] = useState(null);
+  const [homeName, setHomeName] = useState('');
+  const [currentTimestamp, setCurrentTimestamp] = useState(Date.now());
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(!!user);
+  const [notificationsError, setNotificationsError] = useState('');
+  const [notificationActionSaving, setNotificationActionSaving] = useState(false);
+  const displayName = (
+    homeName.trim() ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    (user ? 'Cliente' : 'Visitante')
+  ).trim().split(/\s+/)[0];
+  useEffect(() => {
+    const id = setInterval(() => setCurrentTimestamp(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  const loadNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    const cutoff = new Date().toISOString();
+    try {
+      const [list, number] = await Promise.all([
+        supabase.from('notifications')
+          .select('id,appointment_id,type,title,body,created_at,visible_at,read_at')
+          .eq('profile_id', user.id).lte('visible_at', cutoff)
+          .order('visible_at', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(100),
+        supabase.from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('profile_id', user.id).is('read_at', null)
+          .lte('visible_at', cutoff),
+      ]);
+      if (list.error) throw list.error;
+      if (number.error) throw number.error;
+      setNotifications(list.data || []);
+      setUnreadNotifications(number.count || 0);
+      setNotificationsError('');
+    } catch (e) {
+      setNotificationsError('Não foi possível carregar as notificações: ' + (e?.message || 'erro desconhecido'));
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setNotifications([]);
+      setUnreadNotifications(0);
+      setNotificationsLoading(false);
+      return;
+    }
+    loadNotifications();
+    const channel = supabase.channel('client-notifications-' + user.id)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'notifications',
+        filter: 'profile_id=eq.' + user.id,
+      }, () => { loadNotifications(); })
+      .subscribe();
+    // Sincroniza mudanças e libera lembretes na hora programada,
+    // mesmo se a conexão Realtime ficar indisponível.
+    const interval = setInterval(loadNotifications, 60000);
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, loadNotifications]);
+
+  useEffect(() => {
+    if (user?.id && (currentScreen === 'Home' || currentScreen === 'Notifications'))
+      loadNotifications();
+  }, [currentScreen, user?.id, loadNotifications]);
+
+  async function markNotificationRead(id = null) {
+    if (!user?.id || notificationActionSaving) return;
+    setNotificationActionSaving(true);
+    try {
+      let query = supabase.from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('profile_id', user.id)
+        .is('read_at', null)
+        .lte('visible_at', new Date().toISOString());
+      if (id) query = query.eq('id', id);
+      const { error } = await query;
+      if (error) throw error;
+      await loadNotifications();
+    } catch (e) {
+      setNotificationsError('Não foi possível atualizar os avisos: ' + (e?.message || 'erro desconhecido'));
+    } finally { setNotificationActionSaving(false); }
+  }
 
   useEffect(() => {
     let active = true;
     if (!user?.id) {
       setHomeAvatar(null);
+      setHomeName('');
       return () => { active = false; };
     }
     // Inicializa o avatar na Home ao entrar na conta.
     // Alterações posteriores são sincronizadas pelo ProfileScreen.
     supabase.from('profiles')
-      .select('avatar_path')
+      .select('avatar_path,full_name')
       .eq('id', user.id)
       .single()
       .then(({ data, error }) => {
@@ -115,6 +217,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           ? supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl + '?v=' + Date.now()
           : null;
         setHomeAvatar(url);
+        setHomeName(data?.full_name || '');
       });
     return () => { active = false; };
   }, [user?.id]);
@@ -356,18 +459,33 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
 
   const HomeScreen = () => (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text style={styles.greeting}>Olá, bem-vinda! ✨</Text>
-          <Text style={styles.subtitle}>Pronta para renovar suas unhas?</Text>
-        </View>
-        <TouchableOpacity style={styles.profileIcon} accessibilityRole="button"
+      <View style={styles.homeGreetingHeader}>
+        <TouchableOpacity style={styles.greetingAvatarButton} accessibilityRole="button"
           accessibilityLabel={isAdmin ? 'Abrir meu perfil no Admin' : user ? 'Abrir perfil' : 'Entrar ou criar conta'}
-          onPress={() => isAdmin ? (setAdminSection('perfil'),setCurrentScreen('Admin')) : user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
+          onPress={() => isAdmin ? (setAdminSection('perfil'),setCurrentScreen('Admin')) :
+            user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
           {user && homeAvatar
-            ? <Image source={{ uri: homeAvatar }} style={styles.homeAvatar} resizeMode="cover"
-                accessibilityLabel="Minha foto de perfil" />
-            : <Ionicons name="person-outline" size={23} color={colors.ink} />}
+            ? <Image source={{ uri: homeAvatar }} style={styles.greetingAvatarImage}
+                resizeMode="cover" accessibilityLabel="Minha foto de perfil" />
+            : <Ionicons name="person-outline" size={29} color={colors.mocha}/>}
+        </TouchableOpacity>
+        <View style={styles.greetingTextBlock}>
+          <Text style={styles.greetingDay}>{greetingForTime(currentTimestamp)}</Text>
+          <Text style={styles.greetingFullName} numberOfLines={1}
+            adjustsFontSizeToFit>{displayName}</Text>
+        </View>
+        <TouchableOpacity style={styles.homeBellButton} accessibilityRole="button"
+          accessibilityLabel={user ? 'Abrir notificações' :
+            'Entre na sua conta para ver notificações'}
+          onPress={() => user ? setCurrentScreen('Notifications') : onRequestAuth('Home')}>
+          <Ionicons name="notifications-outline" size={29} color={colors.ink}/>
+          {user && unreadNotifications > 0 && (
+            <View style={styles.homeBellBadge}>
+              <Text style={styles.homeBellBadgeText}>
+                {unreadNotifications > 9 ? '9+' : String(unreadNotifications)}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -615,7 +733,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         <Ionicons name="arrow-back-outline" size={19} color={colors.mocha}/>
         <Text style={{color:colors.mocha,fontWeight:'700'}}>Voltar ao painel Admin</Text>
       </TouchableOpacity>
-      <ProfileScreen user={user} onLogout={onLogout} onAvatarChange={setHomeAvatar}/>
+      <ProfileScreen user={user} onLogout={onLogout} onAvatarChange={setHomeAvatar}
+          onNameChange={setHomeName}/>
     </View>
   ) : (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: '#F4F5F7', flexGrow: 1 }]}>
@@ -749,11 +868,27 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             ))
           : GuestBookingScreen())}
         {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
+        {currentScreen === 'Notifications' && user && <ClientNotifications
+          items={notifications}
+          unreadCount={unreadNotifications}
+          loading={notificationsLoading}
+          error={notificationsError}
+          updating={notificationActionSaving}
+          onBack={() => setCurrentScreen('Home')}
+          onRefresh={loadNotifications}
+          onMarkRead={(id) => markNotificationRead(id)}
+          onMarkAll={() => markNotificationRead()}
+          onOpenBookings={() => {
+            if (isAdmin) { setAdminSection('agenda'); setCurrentScreen('Admin'); }
+            else { setBookingView('hub'); setCurrentScreen('Booking'); }
+          }}
+        />}
         {currentScreen === 'Points' && user && !isAdmin && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')} onRedeem={() => { setPaymentMethod('points');setBookingView('new');setBookingSuccess('');setCurrentScreen('Booking'); }}/>}
         {currentScreen === 'Profile' && user && !isAdmin && <ProfileScreen
           user={user}
           onLogout={onLogout}
           onAvatarChange={setHomeAvatar}
+          onNameChange={setHomeName}
         />}
         {currentScreen === 'Admin' && isAdmin && AdminScreen()}
       </View>
@@ -931,6 +1066,23 @@ const styles = StyleSheet.create({
   mainContent: { flex: 1 },
   container: { padding: 24, paddingBottom: 40 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, marginTop: 10 },
+  homeGreetingHeader: { flexDirection: 'row', alignItems: 'center',
+    gap: 13, marginBottom: 27, marginTop: 8, minHeight: 70 },
+  greetingAvatarButton: { height: 66, width: 66, borderRadius: 33,
+    backgroundColor: colors.nude, justifyContent: 'center',
+    alignItems: 'center', overflow: 'hidden' },
+  greetingAvatarImage: { width: 66, height: 66, borderRadius: 33 },
+  greetingTextBlock: { flex: 1, minWidth: 0, justifyContent: 'center' },
+  greetingDay: { color: colors.muted, fontSize: 17, fontWeight: '400', marginBottom: 2 },
+  greetingFullName: { color: colors.ink, fontSize: 27, fontWeight: '700' },
+  homeBellButton: { width: 62, height: 62, backgroundColor: colors.white,
+    borderRadius: 31, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.11, shadowRadius: 11,
+    shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  homeBellBadge: { position: 'absolute', right: 8, top: 8,
+    minWidth: 20, height: 20, borderRadius: 10, backgroundColor: '#AD4D55',
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  homeBellBadgeText: { color: colors.white, fontSize: 10, fontWeight: '700' },
   pageHeader: { paddingHorizontal: 24, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.white },
   pageTitle: { fontSize: 20, fontWeight: 'bold', color: colors.ink, marginBottom: 4 },
   greeting: { fontSize: 22, fontWeight: '700', color: colors.ink, marginBottom: 4 },
