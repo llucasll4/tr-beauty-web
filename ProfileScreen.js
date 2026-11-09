@@ -33,7 +33,7 @@ function CropSlider({label,value,min,max,step=1,onChange,disabled}) {
     })}
   </View>;
 }
-export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{}}) {
+export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNameChange=()=>{}}) {
  const [name,setName]=useState('');
  const [phone,setPhone]=useState('');
  const [email,setEmail]=useState(user?.email||'');
@@ -81,6 +81,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{}}) {
  async function saveProfile(){if(busy)return;setBusy(true);say('');try{
    const {error:e}=await supabase.from('profiles').update({full_name:name.trim(),phone:phone.trim()||null}).eq('id',user.id);
    if(e)throw e;
+   onNameChange(name.trim());
    if(email.trim().toLowerCase()!== (user.email||'').toLowerCase()){
      const {error:authError}=await supabase.auth.updateUser({email:email.trim().toLowerCase()});
      if(authError)throw authError;
