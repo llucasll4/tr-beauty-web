@@ -14,6 +14,7 @@ import {
 
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
+import { formatBrazilMobile, normalizeBrazilMobile } from './phoneUtils';
 
 // Cores oficiais da TR Beauty Concept
 const C = {
@@ -47,6 +48,7 @@ export default function AuthScreen({
 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmationEmail,setConfirmationEmail]=useState('');
   const [confirmationCode,setConfirmationCode]=useState('');
@@ -101,9 +103,12 @@ export default function AuthScreen({
       }
 
       if (mode === 'signup' && !name.trim()) {
-        throw new Error(
-          'Informe seu nome completo.'
-        );
+        throw new Error('Informe seu nome completo.');
+      }
+
+      const normalizedPhone = mode === 'signup' ? normalizeBrazilMobile(phone) : null;
+      if (mode === 'signup' && !normalizedPhone) {
+        throw new Error('Informe um celular válido com DDD, como (11) 91234-5678.');
       }
 
       if (
@@ -125,7 +130,8 @@ export default function AuthScreen({
             password,
             options: {
               data: {
-                full_name: name.trim()
+                full_name: name.trim(),
+                phone: normalizedPhone
               },
               emailRedirectTo: redirect()
             }
@@ -335,6 +341,25 @@ export default function AuthScreen({
                   autoComplete="name"
                   placeholder="Seu nome"
                 />
+
+                <Text style={s.label}>
+                  Celular com DDD *
+                </Text>
+
+                <TextInput
+                  style={s.input}
+                  value={phone}
+                  onChangeText={value => setPhone(formatBrazilMobile(value))}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  textContentType="telephoneNumber"
+                  placeholder="(11) 91234-5678"
+                  maxLength={15}
+                  accessibilityLabel="Número de celular obrigatório com DDD"
+                />
+                <Text style={s.phoneHint}>
+                  Obrigatório para criar sua conta. Não ativa o envio de WhatsApp automaticamente.
+                </Text>
               </>
             )}
 
@@ -645,6 +670,7 @@ const s = StyleSheet.create({
   backToSiteText: { fontSize: 13, fontWeight: '700', color: C.mocha },
   codeInput:{textAlign:'center',fontSize:24,letterSpacing:5,fontWeight:'700'},
   codeHint:{fontSize:12,lineHeight:19,color:C.muted,marginBottom:18,textAlign:'center'},
+  phoneHint:{fontSize:12,color:C.muted,lineHeight:18,marginTop:-9,marginBottom:18},
   foot: {
     textAlign: 'center',
     color: C.muted,
