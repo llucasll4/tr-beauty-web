@@ -615,7 +615,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           <Ionicons name={currentScreen === 'Home' ? 'home' : 'home-outline'} size={24} color={currentScreen === 'Home' ? colors.ink : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Home' && styles.navTextActive]}>Início</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Booking')}>
+        <TouchableOpacity style={styles.navItem}
+          onPress={() => { setCurrentScreen('Booking'); if (user) { setBookingView('hub'); setBookingSuccess(''); } }}>
           <Ionicons name={currentScreen === 'Booking' ? 'calendar' : 'calendar-outline'} size={24} color={currentScreen === 'Booking' ? colors.ink : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Booking' && styles.navTextActive]}>{user ? 'Reservas' : 'Agendar'}</Text>
         </TouchableOpacity>
