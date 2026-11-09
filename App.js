@@ -145,7 +145,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [serviceForm, setServiceForm] = useState({
     name: '', description: '', category: '', price: '',
-    duration_minutes: '', active: true,
+    duration_minutes: '', redeem_points: '300', active: true,
   });
 
   async function loadServices() {
@@ -187,7 +187,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
 
   function beginNewService() {
     setEditingId(null);
-    setServiceForm({ name: '', description: '', category: '', price: '', duration_minutes: '', active: true });
+    setServiceForm({ name: '', description: '', category: '', price: '', duration_minutes: '', redeem_points: String(300+100*services.length), active: true });
     setShowServiceForm(true);
     setServiceError('');
   }
@@ -197,7 +197,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     setServiceForm({
       name: service.name || '', description: service.description || '',
       category: service.category || '', price: String(service.price),
-      duration_minutes: String(service.duration_minutes), active: service.active,
+      duration_minutes: String(service.duration_minutes), redeem_points: String(service.redeem_points || 300), active: service.active,
     });
     setShowServiceForm(true);
     setServiceError('');
@@ -207,10 +207,12 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     if (!isAdmin) return;
     const price = Number(serviceForm.price.replace(',', '.'));
     const duration = Number(serviceForm.duration_minutes);
+    const redeemPoints=Number(serviceForm.redeem_points);
     if (!serviceForm.name.trim() || !serviceForm.price.trim() ||
         !Number.isFinite(price) || price < 0 ||
-        !Number.isInteger(duration) || duration <= 0) {
-      setServiceError('Preencha nome, preço válido e duração em minutos maior que zero.');
+        !Number.isInteger(duration) || duration <= 0 ||
+        !Number.isSafeInteger(redeemPoints) || redeemPoints < 100) {
+      setServiceError('Preencha nome, preço, duração e custo de resgate em pontos (inteiro de pelo menos 100).');
       return;
     }
     setSavingService(true);
@@ -219,7 +221,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       name: serviceForm.name.trim(),
       description: serviceForm.description.trim() || null,
       category: serviceForm.category.trim() || null,
-      price, duration_minutes: duration, active: serviceForm.active,
+      price, duration_minutes: duration, redeem_points: redeemPoints, active: serviceForm.active,
     };
     try {
       const query = editingId
@@ -596,7 +598,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         style={{ marginBottom: 21 }}
-        contentContainerStyle={[styles.adminTabs, { minWidth: 545, marginBottom: 0 }]}>
+        contentContainerStyle={[styles.adminTabs, { minWidth: 690, marginBottom: 0 }]}>
         {[
           ['agenda', 'Agenda'],
           ['clientes', 'Clientes'],
@@ -662,6 +664,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
               ['category', 'Categoria'],
               ['price', 'Preço (ex.: 120,00)'],
               ['duration_minutes', 'Duração em minutos (ex.: 90)'],
+              ['redeem_points', 'Pontos necessários para resgatar o serviço'],
             ].map(([field, title]) => (
               <View key={field}>
                 <Text style={styles.inputLabel}>{title}</Text>
@@ -669,7 +672,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
                   style={styles.loginInput}
                   value={serviceForm[field]}
                   onChangeText={(value) => setServiceForm((prev) => ({ ...prev, [field]: value }))}
-                  keyboardType={field === 'price' ? 'decimal-pad' : field === 'duration_minutes' ? 'number-pad' : 'default'}
+                  keyboardType={field === 'price' ? 'decimal-pad' : ['duration_minutes','redeem_points'].includes(field) ? 'number-pad' : 'default'}
                   placeholder={title}
                 />
               </View>
