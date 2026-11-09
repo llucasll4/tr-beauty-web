@@ -141,7 +141,8 @@ export default function ProfileScreen({user,onLogout}) {
      const {error:profileError}=await supabase.from('profiles')
        .update({avatar_path:path}).eq('id',user.id);
      if(profileError)throw profileError;
-     setAvatarPath(path);setAvatarVersion(Date.now());setOptimisticAvatar(null);
+     // Mantém a prévia local na tela até o próximo carregamento do perfil.
+     setAvatarPath(path);setAvatarVersion(Date.now());
      setEditorOpen(false);setEditorImage(null);selectedImageRef.current=null;
      setFileKey(v=>v+1);say('Foto de perfil atualizada!');
    }catch(e){
