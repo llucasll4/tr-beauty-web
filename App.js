@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Image,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -86,6 +87,30 @@ function buildCalendar(monthKey, allowedDateKeys) {
 
 function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home', initialServiceId = null }) {
   const [currentScreen, setCurrentScreen] = useState(initialScreen);
+  const [homeAvatar, setHomeAvatar] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) {
+      setHomeAvatar(null);
+      return () => { active = false; };
+    }
+    // Inicializa o avatar na Home ao entrar na conta.
+    // Alterações posteriores são sincronizadas pelo ProfileScreen.
+    supabase.from('profiles')
+      .select('avatar_path')
+      .eq('id', user.id)
+      .single()
+      .then(({ data, error }) => {
+        if (!active || error) return;
+        const path = data?.avatar_path;
+        const url = path
+          ? supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl + '?v=' + Date.now()
+          : null;
+        setHomeAvatar(url);
+      });
+    return () => { active = false; };
+  }, [user?.id]);
   const [bookingView, setBookingView] = useState(initialScreen === 'Booking' && initialServiceId ? 'new' : 'hub');
   const [myAppointmentsRefresh, setMyAppointmentsRefresh] = useState(0);
   const [adminSection, setAdminSection] = useState('agenda');
@@ -291,7 +316,10 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         <TouchableOpacity style={styles.profileIcon} accessibilityRole="button"
           accessibilityLabel={user ? 'Abrir perfil' : 'Entrar ou criar conta'}
           onPress={() => user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
-          <Ionicons name="person-outline" size={23} color={colors.ink} />
+          {user && homeAvatar
+            ? <Image source={{ uri: homeAvatar }} style={styles.homeAvatar} resizeMode="cover"
+                accessibilityLabel="Minha foto de perfil" />
+            : <Ionicons name="person-outline" size={23} color={colors.ink} />}
         </TouchableOpacity>
       </View>
 
@@ -606,7 +634,11 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             ))
           : GuestBookingScreen())}
         {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
-        {currentScreen === 'Profile' && user && <ProfileScreen user={user} onLogout={onLogout}/>}
+        {currentScreen === 'Profile' && user && <ProfileScreen
+          user={user}
+          onLogout={onLogout}
+          onAvatarChange={setHomeAvatar}
+        />}
         {currentScreen === 'Admin' && isAdmin && AdminScreen()}
       </View>
 
@@ -753,7 +785,8 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 20, fontWeight: 'bold', color: colors.ink, marginBottom: 4 },
   greeting: { fontSize: 22, fontWeight: '700', color: colors.ink, marginBottom: 4 },
   subtitle: { fontSize: 14, color: colors.muted },
-  profileIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.nude, justifyContent: 'center', alignItems: 'center' },
+  profileIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.nude, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  homeAvatar: { width: 44, height: 44, borderRadius: 22 },
   loyaltyCard: { backgroundColor: colors.nude, borderRadius: 20, padding: 24, marginBottom: 24 },
   loyaltyHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   loyaltyBrand: { fontSize: 12, letterSpacing: 2, fontWeight: '600', color: colors.ink },
