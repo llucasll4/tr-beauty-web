@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, Modal, Platform, ScrollView, StyleSheet, Text
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import NotificationPreferences from './NotificationPreferences';
+import ProfilePointsBanner from './ProfilePointsBanner';
 import { normalizeBrazilMobile, formatBrazilMobile } from './phoneUtils';
 
 const C={ink:'#2C2C2C',muted:'#8E8E93',mocha:'#7A655B',border:'#EBE5DF'};
@@ -34,7 +35,7 @@ function CropSlider({label,value,min,max,step=1,onChange,disabled}) {
     })}
   </View>;
 }
-export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNameChange=()=>{},requirePhone=false}) {
+export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNameChange=()=>{},requirePhone=false,showPoints=true,onOpenRules=()=>{}}) {
  const [name,setName]=useState('');
  const [phone,setPhone]=useState('');
  const [email,setEmail]=useState(user?.email||'');
@@ -53,6 +54,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
  const [cropX,setCropX]=useState(0);
  const [cropY,setCropY]=useState(0);
  const [fileKey,setFileKey]=useState(0);
+ const photoInputRef=useRef(null);
  const previewCanvas=useRef(null);
  const selectedImageRef=useRef(null);
  const selectionRef=useRef(0);
@@ -67,6 +69,11 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
  const avatarUrl=optimisticAvatar || (avatarPath
    ? supabase.storage.from('avatars').getPublicUrl(avatarPath).data.publicUrl+'?v='+avatarVersion
    : null);
+ const avatarName=(name.trim() || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'TR').trim();
+ const avatarWords=avatarName.split(/\s+/).filter(Boolean);
+ const initials=(avatarWords.length>1
+   ? (avatarWords[0].charAt(0)+avatarWords[avatarWords.length-1].charAt(0))
+   : (avatarWords[0]||'TR').slice(0,2)).toLocaleUpperCase('pt-BR');
  useEffect(()=>{
    if(editorOpen&&editorImage&&previewCanvas.current) {
      try{drawCrop(previewCanvas.current,editorImage,zoom,cropX,cropY);}
@@ -160,27 +167,69 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
    }finally{setBusy(false);}
  }
  if(loading)return <View style={s.center}><ActivityIndicator color={C.mocha}/></View>;
- return <><ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
-  <Text style={s.title}>Meu perfil</Text><Text style={s.subtitle}>Seus dados na TR Beauty Concept</Text>
-  <View style={s.photoArea}>{avatarUrl?<Image source={{uri:avatarUrl}} style={s.avatar}/>:<View style={[s.avatar,s.emptyAvatar]}><Ionicons name="person-outline" size={45} color={C.mocha}/></View>}
-  {Platform.OS==='web'?<View style={{alignItems:'center',marginTop:12}}>
-    {React.createElement('input',{key:fileKey,type:'file',accept:'image/*',
-      onChange:chooseAvatar,disabled:busy,'aria-label':'Selecionar nova foto de perfil',
-      style:{maxWidth:260,fontSize:13}})}
-    <Text style={s.help}>Recorte e visualize a foto antes de salvar.</Text>
-    <Text style={s.help}>Sem tamanho mínimo ou máximo para a foto original.</Text>
-  </View>:<Text style={s.help}>Edição de foto disponível na versão web.</Text>}</View>
-  <Text style={s.label}>Nome</Text><TextInput style={s.input} value={name} onChangeText={setName} placeholder="Nome completo"/>
-  <Text style={s.label}>Celular com DDD {requirePhone?'*':''}</Text><TextInput
-     style={s.input} value={phone} onChangeText={v=>setPhone(requirePhone?formatBrazilMobile(v):v)}
-     keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber"
-     placeholder="(11) 91234-5678" maxLength={requirePhone?15:undefined}/>
-  <Text style={s.label}>E-mail</Text><TextInput style={s.input} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="seuemail@exemplo.com"/>
+ return <><ScrollView style={s.rootScroll} contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
+  <Text style={s.title}>Meu perfil</Text>
+  <Text style={s.subtitle}>Seus dados na TR Beauty Concept</Text>
+
+  <View style={s.photoArea}>
+    <View style={s.avatarFrame}>
+      {avatarUrl
+        ? <Image source={{uri:avatarUrl}} style={s.avatar} accessibilityLabel="Minha foto de perfil"/>
+        : <View style={[s.avatar,s.emptyAvatar]}><Text style={s.initials}>{initials}</Text></View>}
+      {Platform.OS==='web' && <TouchableOpacity style={s.cameraButton}
+        accessibilityRole="button" accessibilityLabel="Alterar foto de perfil"
+        disabled={busy} onPress={()=>photoInputRef.current?.click()}>
+        <Ionicons name="camera" size={21} color="#FFFFFF"/>
+      </TouchableOpacity>}
+    </View>
+    {Platform.OS==='web'
+      ? React.createElement('input',{
+          ref:photoInputRef,key:fileKey,type:'file',accept:'image/*',
+          onChange:chooseAvatar,disabled:busy,'aria-label':'Selecionar nova foto de perfil',
+          tabIndex:-1,style:{display:'none'},
+        })
+      : <Text style={s.photoHelp}>Edição de foto disponível na versão web.</Text>}
+  </View>
+
+  {showPoints && <ProfilePointsBanner userId={user.id} onOpenRules={onOpenRules}/>}
+
+  <Text style={s.label}>Nome Completo</Text>
+  <View style={s.inputShell}>
+    <Ionicons name="person-outline" size={22} color={C.muted}/>
+    <TextInput style={s.fieldInput} value={name} onChangeText={setName}
+      accessibilityLabel="Nome completo" autoComplete="name" placeholder="Nome completo"
+      placeholderTextColor={C.muted}/>
+  </View>
+
+  <Text style={s.label}>Celular (WhatsApp){requirePhone?' *':''}</Text>
+  <View style={s.inputShell}>
+    <Ionicons name="phone-portrait-outline" size={22} color={C.muted}/>
+    <TextInput style={s.fieldInput} value={phone}
+      onChangeText={v=>setPhone(requirePhone?formatBrazilMobile(v):v)}
+      keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber"
+      accessibilityLabel="Celular com DDD" placeholder="(11) 91234-5678"
+      placeholderTextColor={C.muted} maxLength={requirePhone?15:undefined}/>
+  </View>
+
+  <Text style={s.label}>E-mail</Text>
+  <View style={s.inputShell}>
+    <Ionicons name="mail-outline" size={22} color={C.muted}/>
+    <TextInput style={s.fieldInput} value={email} onChangeText={setEmail}
+      keyboardType="email-address" autoComplete="email" autoCapitalize="none"
+      accessibilityLabel="E-mail" placeholder="seuemail@exemplo.com"
+      placeholderTextColor={C.muted}/>
+  </View>
+
   <Text style={s.help}>Alterar o e-mail exige confirmação pelo Supabase. O celular é validado pelo formato brasileiro e usado para contato. Mensagens pelo WhatsApp exigem autorização separada.</Text>
   {!!message&&<Text style={{color:error?'#B42318':'#276749',marginVertical:14}}>{message}</Text>}
-  <TouchableOpacity style={s.button} onPress={saveProfile} disabled={busy}><Text style={s.buttonText}>{busy?'Salvando...':'Salvar alterações'}</Text></TouchableOpacity>
+  <TouchableOpacity accessibilityRole="button" style={s.button} onPress={saveProfile} disabled={busy}>
+    <Text style={s.buttonText}>{busy?'Salvando...':'Salvar alterações'}</Text>
+  </TouchableOpacity>
   <NotificationPreferences userId={user.id}/>
-  <TouchableOpacity style={s.logout} onPress={onLogout}><Ionicons name="log-out-outline" size={18} color={C.mocha}/><Text style={{color:C.mocha,fontWeight:'600'}}>Sair da conta</Text></TouchableOpacity>
+  <TouchableOpacity style={s.logout} onPress={onLogout} accessibilityRole="button">
+    <Ionicons name="log-out-outline" size={18} color={C.mocha}/>
+    <Text style={{color:C.mocha,fontWeight:'600'}}>Sair da conta</Text>
+  </TouchableOpacity>
  </ScrollView>
  <Modal visible={editorOpen} transparent animationType="fade" onRequestClose={closeEditor}>
   <View style={s.modalBackdrop}>
@@ -243,4 +292,32 @@ const s=StyleSheet.create({
  modalActions:{flexDirection:'row',gap:10,marginTop:14,marginBottom:16},
  cancelButton:{flex:1,borderWidth:1,borderColor:C.border,borderRadius:12,padding:14,alignItems:'center'},
  saveButton:{flex:1,backgroundColor:C.ink,borderRadius:12,padding:14,alignItems:'center'},
- wrap:{padding:24,paddingBottom:55,maxWidth:620,width:'100%',alignSelf:'center'},center:{flex:1,alignItems:'center',justifyContent:'center'},title:{fontSize:24,fontWeight:'700',color:C.ink},subtitle:{fontSize:14,color:C.muted,marginTop:4,marginBottom:22},photoArea:{alignItems:'center',marginBottom:22},avatar:{height:110,width:110,borderRadius:55},emptyAvatar:{backgroundColor:C.border,alignItems:'center',justifyContent:'center'},label:{color:C.ink,fontWeight:'600',marginBottom:8},input:{backgroundColor:'#FFFFFF',padding:15,borderColor:C.border,borderWidth:1,borderRadius:12,marginBottom:16,fontSize:16},help:{color:C.muted,fontSize:12,marginBottom:12,textAlign:'center'},button:{backgroundColor:C.ink,padding:17,borderRadius:13,alignItems:'center'},buttonText:{color:'#FFFFFF',fontWeight:'700'},logout:{flexDirection:'row',gap:8,justifyContent:'center',alignItems:'center',marginTop:25,padding:12}});
+ rootScroll:{backgroundColor:'#FAF9F7'},
+ wrap:{paddingHorizontal:24,paddingTop:24,paddingBottom:55,maxWidth:620,width:'100%',alignSelf:'center'},
+ center:{flex:1,alignItems:'center',justifyContent:'center'},
+ title:{fontSize:36,fontWeight:'800',color:'#1E1B19',letterSpacing:-1.1},
+ subtitle:{fontSize:15,color:'#707782',marginTop:6,marginBottom:12},
+ photoArea:{alignItems:'center',marginTop:33,marginBottom:38},
+ avatarFrame:{width:150,height:150,borderRadius:75,backgroundColor:'#FFFFFF',
+   padding:5,alignItems:'center',justifyContent:'center',
+   shadowColor:'#000000',shadowOpacity:0.10,shadowRadius:18,
+   shadowOffset:{width:0,height:8},elevation:4},
+ avatar:{height:140,width:140,borderRadius:70},
+ emptyAvatar:{backgroundColor:'#1E1B19',alignItems:'center',justifyContent:'center'},
+ initials:{color:'#FFFFFF',fontSize:47,fontWeight:'500',letterSpacing:1},
+ cameraButton:{position:'absolute',right:-4,bottom:-3,width:49,height:49,borderRadius:25,
+   backgroundColor:'#1E1B19',borderWidth:4,borderColor:'#FFFFFF',
+   justifyContent:'center',alignItems:'center',elevation:5},
+ photoHelp:{fontSize:12,color:C.muted,textAlign:'center',marginTop:14},
+ label:{color:'#505B66',fontSize:15,fontWeight:'700',marginBottom:10,marginLeft:4},
+ inputShell:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#F4F1EE',
+   borderRadius:17,flexDirection:'row',alignItems:'center',
+   gap:15,paddingHorizontal:17,marginBottom:25,minHeight:60,
+   shadowColor:'#000000',shadowOpacity:0.035,shadowRadius:6,
+   shadowOffset:{width:0,height:2},elevation:1},
+ fieldInput:{flex:1,minWidth:0,color:'#242B34',fontSize:16,paddingVertical:17},
+ help:{color:C.muted,fontSize:12,marginBottom:12,lineHeight:19,textAlign:'center'},
+ button:{backgroundColor:C.ink,padding:17,borderRadius:13,alignItems:'center',marginTop:9},
+ buttonText:{color:'#FFFFFF',fontWeight:'700'},
+ logout:{flexDirection:'row',gap:8,justifyContent:'center',alignItems:'center',marginTop:25,padding:12}
+});

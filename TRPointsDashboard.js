@@ -46,13 +46,13 @@ function Item({icon,label,value,detail,positive}) {
   </View>;
 }
 
-export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{}}) {
+export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initialTab='ledger'}) {
   const {width} = useWindowDimensions();
   const [overview,setOverview] = useState(null);
   const [totals,setTotals] = useState(emptyTotals);
   const [entries,setEntries] = useState([]);
   const [services,setServices] = useState([]);
-  const [tab,setTab] = useState('ledger');
+  const [tab,setTab] = useState(initialTab);
   const [loading,setLoading] = useState(true);
   const [moreLoading,setMoreLoading] = useState(false);
   const [error,setError] = useState('');
