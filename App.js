@@ -470,7 +470,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             : <Ionicons name="person-outline" size={29} color={colors.mocha}/>}
         </TouchableOpacity>
         <View style={styles.greetingTextBlock}>
-          <Text style={styles.greetingDay}>{greetingForTime(currentTimestamp)}</Text>
+          <Text style={styles.greetingDay}>{greetingForTime(currentTimestamp)} 💅🌟</Text>
           <Text style={styles.greetingFullName} numberOfLines={1}
             adjustsFontSizeToFit>{displayName}</Text>
         </View>
