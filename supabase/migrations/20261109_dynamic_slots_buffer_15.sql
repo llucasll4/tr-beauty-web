@@ -78,7 +78,7 @@ begin
 
   select bh.opens_at, bh.closes_at into v_open, v_close
   from public.business_hours bh
-  where bh.weekday = pg_catalog.extract(dow from p_date)
+  where bh.weekday = extract(dow from p_date)
     and bh.enabled = true;
   if not found or v_open is null or v_close is null or v_close <= v_open then
     return;
@@ -96,7 +96,7 @@ begin
       and a.ends_at + v_buffer > v_open_at
     order by a.starts_at, a.ends_at
   loop
-    v_gap_end := pg_catalog.least(v_booking.starts_at, v_close_at);
+    v_gap_end := least(v_booking.starts_at, v_close_at);
     v_latest_start := v_gap_end
       - pg_catalog.make_interval(mins => v_duration) - v_buffer;
 
@@ -111,7 +111,7 @@ begin
         order by candidate.slot_start;
     end if;
 
-    v_cursor := pg_catalog.greatest(
+    v_cursor := greatest(
       v_cursor, v_booking.ends_at + v_buffer
     );
     if v_cursor >= v_close_at then
@@ -181,7 +181,7 @@ begin
 
   select bh.opens_at, bh.closes_at into v_open, v_close
   from public.business_hours bh
-  where bh.weekday = pg_catalog.extract(dow from v_local_start)
+  where bh.weekday = extract(dow from v_local_start)
     and bh.enabled = true;
   if not found then
     raise exception 'Estúdio fechado na data escolhida' using errcode = '22023';
