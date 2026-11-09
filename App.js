@@ -23,6 +23,7 @@ import AdminCalendar from './AdminCalendar';
 import AdminClients from './AdminClients';
 import LoyaltyCard from './LoyaltyCard';
 import TRPointsDashboard from './TRPointsDashboard';
+import AdminPointsPrices from './AdminPointsPrices';
 import PortfolioScreen from './PortfolioScreen';
 import FinancialDashboard from './FinancialDashboard';
 import ClientAppointments from './ClientAppointments';
@@ -126,6 +127,12 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [bookingSuccess, setBookingSuccess] = useState('');
   const [bookingConfirmationVisible, setBookingConfirmationVisible] = useState(false);
   const [bookingSaving, setBookingSaving] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [bookingWasRedeemed, setBookingWasRedeemed] = useState(false);
+  const [pointsBalance, setPointsBalance] = useState(0);
+  const [pointsEnabled, setPointsEnabled] = useState(false);
+  const [pointsLoading, setPointsLoading] = useState(false);
+  const [pointsError, setPointsError] = useState('');
   const [appointments, setAppointments] = useState([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentsError, setAppointmentsError] = useState('');
@@ -138,7 +145,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [serviceForm, setServiceForm] = useState({
     name: '', description: '', category: '', price: '',
-    duration_minutes: '', active: true,
+    duration_minutes: '', redeem_points: '300', active: true,
   });
 
   async function loadServices() {
@@ -147,7 +154,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     try {
       const { data, error } = await supabase
         .from('services')
-        .select('id,name,description,category,price,duration_minutes,active')
+        .select('id,name,description,category,price,duration_minutes,active,redeem_points')
         .order('name', { ascending: true });
       if (error) throw error;
       setServices(data || []);
@@ -160,9 +167,27 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
 
   useEffect(() => { loadServices(); }, [isAdmin]);
 
+  async function reloadPoints() {
+    if (!user) return;
+    setPointsLoading(true);
+    setPointsError('');
+    try {
+      const {data,error} = await supabase.rpc('get_my_loyalty');
+      if (error) throw error;
+      setPointsBalance(Math.max(0,Number(data?.balance||0)));
+      setPointsEnabled(!!data?.enabled);
+    } catch(err) {
+      setPointsEnabled(false);
+      setPointsError('Não foi possível verificar seu saldo: '+err.message);
+    } finally { setPointsLoading(false); }
+  }
+  useEffect(() => {
+    if (user && currentScreen==='Booking' && bookingView==='new') reloadPoints();
+  },[user?.id,currentScreen,bookingView]);
+
   function beginNewService() {
     setEditingId(null);
-    setServiceForm({ name: '', description: '', category: '', price: '', duration_minutes: '', active: true });
+    setServiceForm({ name: '', description: '', category: '', price: '', duration_minutes: '', redeem_points: String(300+100*services.length), active: true });
     setShowServiceForm(true);
     setServiceError('');
   }
@@ -172,7 +197,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     setServiceForm({
       name: service.name || '', description: service.description || '',
       category: service.category || '', price: String(service.price),
-      duration_minutes: String(service.duration_minutes), active: service.active,
+      duration_minutes: String(service.duration_minutes), redeem_points: String(service.redeem_points || 300), active: service.active,
     });
     setShowServiceForm(true);
     setServiceError('');
@@ -182,10 +207,12 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     if (!isAdmin) return;
     const price = Number(serviceForm.price.replace(',', '.'));
     const duration = Number(serviceForm.duration_minutes);
+    const redeemPoints=Number(serviceForm.redeem_points);
     if (!serviceForm.name.trim() || !serviceForm.price.trim() ||
         !Number.isFinite(price) || price < 0 ||
-        !Number.isInteger(duration) || duration <= 0) {
-      setServiceError('Preencha nome, preço válido e duração em minutos maior que zero.');
+        !Number.isInteger(duration) || duration <= 0 ||
+        !Number.isSafeInteger(redeemPoints) || redeemPoints < 1) {
+      setServiceError('Preencha nome, preço, duração e custo de resgate em pontos (inteiro de pelo menos 1).');
       return;
     }
     setSavingService(true);
@@ -194,7 +221,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       name: serviceForm.name.trim(),
       description: serviceForm.description.trim() || null,
       category: serviceForm.category.trim() || null,
-      price, duration_minutes: duration, active: serviceForm.active,
+      price, duration_minutes: duration, redeem_points: redeemPoints, active: serviceForm.active,
     };
     try {
       const query = editingId
@@ -263,17 +290,27 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   async function confirmBooking() {
     if (!user) { onRequestAuth('Booking', selectedServiceId); return; }
     if (!selectedServiceId || !selectedTime || bookingSaving) return;
+    if (paymentMethod==='points' &&
+        (!pointsEnabled || pointsLoading || !Number.isInteger(chosenService?.redeem_points) ||
+         pointsBalance < chosenService.redeem_points)) {
+      setBookingError('O resgate não está disponível ou seu saldo de pontos é insuficiente.');
+      return;
+    }
     setBookingSaving(true);
     setBookingError('');
     setBookingSuccess('');
     try {
-      const { error } = await supabase.rpc('book_appointment', {
-        p_service_id: selectedServiceId, p_starts_at: selectedTime,
-      });
+      const withPoints=paymentMethod==='points';
+      const { error } = await supabase.rpc(
+        withPoints ? 'book_appointment_with_points' : 'book_appointment', {
+          p_service_id: selectedServiceId, p_starts_at: selectedTime,
+        });
       if (error) throw error;
       // Pedido recebido: não confundir envio com confirmação do estúdio.
       setBookingSuccess('');
       setSelectedTime(null);
+      setPaymentMethod('cash');
+      setBookingWasRedeemed(withPoints);
       setBookingView('hub');
       setMyAppointmentsRefresh(value => value + 1);
       setCurrentScreen('Home');
@@ -281,6 +318,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       if (isAdmin) await loadAppointments();
     } catch (err) {
       setBookingError('Não foi possível reservar: ' + err.message);
+      if (paymentMethod==='points') reloadPoints();
       setBookingSuccess('');
     } finally { setBookingSaving(false); }
   }
@@ -432,16 +470,49 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         {activeServices.map(service => (
           <TouchableOpacity key={service.id}
             style={[styles.bookingCard, selectedServiceId === service.id && styles.bookingCardSelected, { marginBottom: 10 }]}
-            onPress={() => { setBookingSuccess(''); setSelectedServiceId(service.id); }}>
+            onPress={() => { setBookingSuccess(''); setBookingError(''); setSelectedServiceId(service.id); }}>
             <View style={{ flex: 1 }}>
               <Text style={styles.serviceTitle}>{service.name}</Text>
               <Text style={styles.serviceDetails}>{service.duration_minutes} min • {money(service.price)}</Text>
+              <Text style={[styles.serviceDetails,{marginTop:5,color:colors.mocha}]}>
+                Resgate: {Number(service.redeem_points||0).toLocaleString('pt-BR')} TR Points
+              </Text>
             </View>
             <Ionicons name={selectedServiceId === service.id ? 'radio-button-on' : 'radio-button-off'} size={22} color={colors.mocha} />
           </TouchableOpacity>
         ))}
         {!activeServices.length && <Text style={styles.subtitle}>Nenhum serviço ativo disponível.</Text>}
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>2. Escolha a data</Text>
+        <Text style={[styles.sectionTitle,{marginTop:24}]}>2. Forma de pagamento</Text>
+        <View style={{flexDirection:'row',gap:10,marginBottom:14}}>
+          <TouchableOpacity onPress={()=>{setPaymentMethod('cash');setBookingError('');}}
+            accessibilityRole="button" accessibilityState={{selected:paymentMethod==='cash'}}
+            style={[styles.bookingCard,{flex:1,justifyContent:'center'},paymentMethod==='cash'&&styles.bookingCardSelected]}>
+            <Text style={{fontWeight:'700',color:colors.ink}}>No atendimento</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={()=>{setPaymentMethod('points');setBookingError('');}}
+            accessibilityRole="button" accessibilityState={{selected:paymentMethod==='points'}}
+            style={[styles.bookingCard,{flex:1,justifyContent:'center'},paymentMethod==='points'&&styles.bookingCardSelected]}>
+            <Text style={{fontWeight:'700',color:colors.ink}}>TR Points</Text>
+          </TouchableOpacity>
+        </View>
+        {paymentMethod==='points'&&<View style={[styles.simpleServiceCard,{marginBottom:16}]}>
+          <Text style={[styles.serviceTitle,{marginBottom:8}]}>Resgatar com TR Points</Text>
+          {pointsLoading?<ActivityIndicator color={colors.mocha}/>:
+           <Text style={styles.serviceDetails}>Saldo disponível: {pointsBalance.toLocaleString('pt-BR')} pts</Text>}
+          <Text style={[styles.serviceDetails,{marginTop:6}]}>
+            Custo do serviço: {Number(chosenService?.redeem_points||0).toLocaleString('pt-BR')} pts
+          </Text>
+          {!pointsLoading&&pointsEnabled&&pointsBalance<Number(chosenService?.redeem_points||0)&&
+            <Text style={[styles.loginError,{marginTop:10}]}>Pontos insuficientes para este resgate.</Text>}
+          {!pointsLoading&&!pointsEnabled&&
+            <Text style={[styles.loginError,{marginTop:10}]}>Programa de pontos indisponível no momento.</Text>}
+          {!!pointsError&&<Text style={styles.loginError}>{pointsError}</Text>}
+          <Text style={[styles.subtitle,{marginTop:10}]}>
+            Os pontos serão descontados ao enviar o pedido e devolvidos se o estúdio cancelar antes do atendimento.
+            Este serviço não gera novos pontos.
+          </Text>
+        </View>}
+        <Text style={[styles.sectionTitle,{marginTop:24}]}>3. Escolha a data</Text>
         <View style={styles.calendarCard}>
           <View style={styles.calendarHeader}>
             <TouchableOpacity accessibilityLabel="Mês anterior" disabled={calendarMonth <= firstCalendarMonth}
@@ -485,7 +556,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           </View>
           <Text style={styles.calendarHint}>Terça a sábado • datas disponíveis nos próximos 30 dias</Text>
         </View>
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>3. Horários disponíveis</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>4. Horários disponíveis</Text>
         {slotsLoading && <ActivityIndicator color={colors.mocha} />}
         {!slotsLoading && chosenService && slots.length === 0 && !bookingError && (
           <Text style={styles.subtitle}>Não há horários disponíveis nesta data. Escolha outra.</Text>
@@ -506,9 +577,14 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       </ScrollView>
       <View style={styles.footerBooking}>
         {!!selectedTime && <Text style={[styles.subtitle, { marginBottom: 8 }]}>Selecionado: {readableDate(selectedTime)}</Text>}
-        <TouchableOpacity disabled={!selectedTime || bookingSaving || slotsLoading} onPress={confirmBooking}
-          style={[styles.confirmButton, (!selectedTime || bookingSaving || slotsLoading) && { opacity: 0.45 }]}>
-          {bookingSaving ? <ActivityIndicator color={colors.white} /> : <Text style={styles.confirmButtonText}>Confirmar reserva</Text>}
+        <TouchableOpacity disabled={!selectedTime || bookingSaving || slotsLoading ||
+          (paymentMethod==='points' && (pointsLoading || !pointsEnabled ||
+           !chosenService?.redeem_points || pointsBalance<chosenService.redeem_points))}
+          onPress={confirmBooking}
+          style={[styles.confirmButton, (!selectedTime || bookingSaving || slotsLoading ||
+            (paymentMethod==='points' && (pointsLoading || !pointsEnabled ||
+             !chosenService?.redeem_points || pointsBalance<chosenService.redeem_points))) && { opacity: 0.45 }]}>
+          {bookingSaving ? <ActivityIndicator color={colors.white} /> : <Text style={styles.confirmButtonText}>{paymentMethod==='points'?'Resgatar e confirmar pedido':'Confirmar reserva'}</Text>}
         </TouchableOpacity>
       </View>
     </View>
@@ -522,13 +598,14 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         style={{ marginBottom: 21 }}
-        contentContainerStyle={[styles.adminTabs, { minWidth: 545, marginBottom: 0 }]}>
+        contentContainerStyle={[styles.adminTabs, { minWidth: 690, marginBottom: 0 }]}>
         {[
           ['agenda', 'Agenda'],
           ['clientes', 'Clientes'],
           ['servicos', 'Serviços'],
           ['portfolio', 'Portfólio'],
           ['financeiro', 'Financeiro'],
+          ['pontos','TR Points'],
         ].map(([id, label]) => (
           <TouchableOpacity
             key={id}
@@ -545,6 +622,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       {adminSection === 'clientes' && <AdminClients />}
       {adminSection === 'portfolio' && <PortfolioScreen adminMode services={services} />}
       {adminSection === 'financeiro' && <FinancialDashboard />}
+      {adminSection === 'pontos' && <AdminPointsPrices services={services} onSaved={loadServices} />}
       {adminSection === 'servicos' && (
         <View>
         <Text style={styles.sectionTitle}>Gerenciar serviços</Text>
@@ -586,6 +664,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
               ['category', 'Categoria'],
               ['price', 'Preço (ex.: 120,00)'],
               ['duration_minutes', 'Duração em minutos (ex.: 90)'],
+              ['redeem_points', 'Pontos necessários para resgatar o serviço'],
             ].map(([field, title]) => (
               <View key={field}>
                 <Text style={styles.inputLabel}>{title}</Text>
@@ -593,7 +672,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
                   style={styles.loginInput}
                   value={serviceForm[field]}
                   onChangeText={(value) => setServiceForm((prev) => ({ ...prev, [field]: value }))}
-                  keyboardType={field === 'price' ? 'decimal-pad' : field === 'duration_minutes' ? 'number-pad' : 'default'}
+                  keyboardType={field === 'price' ? 'decimal-pad' : ['duration_minutes','redeem_points'].includes(field) ? 'number-pad' : 'default'}
                   placeholder={title}
                 />
               </View>
@@ -640,7 +719,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             ))
           : GuestBookingScreen())}
         {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
-        {currentScreen === 'Points' && user && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')}/>}
+        {currentScreen === 'Points' && user && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')} onRedeem={() => { setPaymentMethod('points');setBookingView('new');setBookingSuccess('');setCurrentScreen('Booking'); }}/>}
         {currentScreen === 'Profile' && user && <ProfileScreen
           user={user}
           onLogout={onLogout}
@@ -683,7 +762,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             </View>
             <Text style={styles.confirmationTitle}>Pedido de agendamento enviado!</Text>
             <Text style={styles.confirmationMessage}>
-              Seu pedido foi registrado com sucesso e está aguardando a confirmação do estúdio.
+              {bookingWasRedeemed ? 'Seu resgate foi registrado e os pontos foram descontados. O atendimento aguarda a confirmação do estúdio.' : 'Seu pedido foi registrado com sucesso e está aguardando a confirmação do estúdio.'}
             </Text>
             <Text style={styles.confirmationHint}>
               Para acompanhar seus pedidos futuros e visualizar agendamentos anteriores,
