@@ -47,7 +47,7 @@ Em Meta App → WhatsApp → Configuration, usar a URL da função `whatsapp-web
 ## 3. Clube TR Points VIP
 
 - Dentro de **Meu TR Points**, nova aba **Clube VIP**.
-- Níveis **Bronze (0)**, **Prata (500 pontos históricos)** e **Ouro (1500 pontos históricos)** por padrão; a meta é baseada no **total de pontos ganhos** no histórico, não no saldo disponível, para que resgates não diminuam o nível.
+- Níveis **Bronze (0)**, **Prata (500 pontos históricos)** e **Ouro (1500 pontos históricos)** por padrão; a meta é baseada no **total de pontos ganhos** no histórico, não no saldo disponível, para que resgates não diminuam o nível. **Estornos de pontos por cancelamento não contam como novos ganhos**, evitando subir de nível apenas resgatando e cancelando.
 - A cliente visualiza progresso, código pessoal de indicação, local para inserir código recebido, data de aniversário (somente dia e mês) e regras de vantagens.
 - Regras iniciais de campanhas, configuráveis na Admin:
   - **Indicações**: +100 pontos para quem indicou após o primeiro atendimento pago concluído da indicada; códigos únicos, sem autoindicação, telefones distintos e registro único por cliente.
@@ -62,6 +62,7 @@ Em Meta App → WhatsApp → Configuration, usar a URL da função `whatsapp-web
 - `supabase/migrations/20261109_vip_summary_whatsapp_attendance.sql`
 - `supabase/migrations/20261109_admin_whatsapp_summary.sql`
 - `supabase/migrations/20261109_fix_vip_award_conflict.sql`
+- `supabase/migrations/20261109_fix_vip_lifetime_credits.sql`
 
 ## Backend publicado
 - `supabase/functions/p4-notifications/index.ts`: worker existente evoluído para quick reply opcional + consentimento expresso.
