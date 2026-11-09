@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, Modal, Platform, ScrollView, StyleSheet, Text
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import NotificationPreferences from './NotificationPreferences';
+import { normalizeBrazilMobile, formatBrazilMobile } from './phoneUtils';
 
 const C={ink:'#2C2C2C',muted:'#8E8E93',mocha:'#7A655B',border:'#EBE5DF'};
 const SIZE=320;
@@ -33,7 +34,7 @@ function CropSlider({label,value,min,max,step=1,onChange,disabled}) {
     })}
   </View>;
 }
-export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNameChange=()=>{}}) {
+export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNameChange=()=>{},requirePhone=false}) {
  const [name,setName]=useState('');
  const [phone,setPhone]=useState('');
  const [email,setEmail]=useState(user?.email||'');
@@ -60,7 +61,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
    const {data,error:e}=await supabase.from('profiles').select('full_name,phone,avatar_path').eq('id',user.id).single();
    if(!active)return;
    if(e)say('Erro ao carregar perfil: '+e.message,true);
-   else{setName(data.full_name||'');setPhone(data.phone||'');setAvatarPath(data.avatar_path||null);}
+   else{setName(data.full_name||'');setPhone(formatBrazilMobile(data.phone||''));setAvatarPath(data.avatar_path||null);}
    setLoading(false);
  })();return()=>{active=false;};},[user.id]);
  const avatarUrl=optimisticAvatar || (avatarPath
@@ -79,7 +80,11 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
    setEditorLoading(false);setEditorError('');setFileKey(v=>v+1);
  }
  async function saveProfile(){if(busy)return;setBusy(true);say('');try{
-   const {error:e}=await supabase.from('profiles').update({full_name:name.trim(),phone:phone.trim()||null}).eq('id',user.id);
+   const normalizedPhone = phone.trim() ? normalizeBrazilMobile(phone) : null;
+   if ((requirePhone || phone.trim()) && !normalizedPhone) {
+     throw new Error('Informe um celular válido com DDD, como (11) 91234-5678.');
+   }
+   const {error:e}=await supabase.from('profiles').update({full_name:name.trim(),phone:normalizedPhone}).eq('id',user.id);
    if(e)throw e;
    onNameChange(name.trim());
    if(email.trim().toLowerCase()!== (user.email||'').toLowerCase()){
@@ -166,9 +171,12 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
     <Text style={s.help}>Sem tamanho mínimo ou máximo para a foto original.</Text>
   </View>:<Text style={s.help}>Edição de foto disponível na versão web.</Text>}</View>
   <Text style={s.label}>Nome</Text><TextInput style={s.input} value={name} onChangeText={setName} placeholder="Nome completo"/>
-  <Text style={s.label}>Telefone para contato</Text><TextInput style={s.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="(11) 99999-9999"/>
+  <Text style={s.label}>Celular com DDD {requirePhone?'*':''}</Text><TextInput
+     style={s.input} value={phone} onChangeText={v=>setPhone(formatBrazilMobile(v))}
+     keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber"
+     placeholder="(11) 91234-5678" maxLength={15}/>
   <Text style={s.label}>E-mail</Text><TextInput style={s.input} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="seuemail@exemplo.com"/>
-  <Text style={s.help}>Alterar o e-mail exige confirmação pelo Supabase. Editar o telefone de contato não altera o número usado para login por SMS.</Text>
+  <Text style={s.help}>Alterar o e-mail exige confirmação pelo Supabase. O celular é validado pelo formato brasileiro e usado para contato. Mensagens pelo WhatsApp exigem autorização separada.</Text>
   {!!message&&<Text style={{color:error?'#B42318':'#276749',marginVertical:14}}>{message}</Text>}
   <TouchableOpacity style={s.button} onPress={saveProfile} disabled={busy}><Text style={s.buttonText}>{busy?'Salvando...':'Salvar alterações'}</Text></TouchableOpacity>
   <NotificationPreferences userId={user.id}/>
