@@ -112,6 +112,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   },[isAdmin,currentScreen]);
   const [homeAvatar, setHomeAvatar] = useState(null);
   const [homeName, setHomeName] = useState('');
+  const [pointsInitialTab, setPointsInitialTab] = useState('ledger');
+  const [pointsReturnScreen, setPointsReturnScreen] = useState('Home');
   const [notifications, setNotifications] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(!!user);
@@ -639,7 +641,11 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             setCurrentScreen('Booking');
           }}
         />
-        <LoyaltyCard onOpenDetails={() => setCurrentScreen('Points')} />
+        <LoyaltyCard onOpenDetails={() => {
+          setPointsInitialTab('ledger');
+          setPointsReturnScreen('Home');
+          setCurrentScreen('Points');
+        }} />
       </View> : (
         <View style={styles.guestCard}>
           <View style={styles.guestCardHeader}>
@@ -831,7 +837,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         <Text style={{color:colors.mocha,fontWeight:'700'}}>Voltar ao painel Admin</Text>
       </TouchableOpacity>
       <ProfileScreen user={user} onLogout={onLogout} onAvatarChange={setHomeAvatar}
-          onNameChange={setHomeName}/>
+          onNameChange={setHomeName} showPoints={false}/>
     </View>
   ) : (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: '#F4F5F7', flexGrow: 1 }]}>
@@ -1038,7 +1044,10 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             else { setBookingView('hub'); setCurrentScreen('Booking'); }
           }}
         />}
-        {currentScreen === 'Points' && user && !isAdmin && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')} onRedeem={() => { setBookingStartStep(1);setPaymentMethod('points');setBookingView('new');setBookingSuccess('');setCurrentScreen('Booking'); }}/>}
+        {currentScreen === 'Points' && user && !isAdmin && <TRPointsDashboard
+          userId={user.id} initialTab={pointsInitialTab}
+          onBack={() => setCurrentScreen(pointsReturnScreen)}
+          onRedeem={() => { setBookingStartStep(1);setPaymentMethod('points');setBookingView('new');setBookingSuccess('');setCurrentScreen('Booking'); }}/>}
         {currentScreen === 'NailBook' && user && !isAdmin && <NailBook
           clientId={user.id}
           onBack={() => setCurrentScreen('Home')}
@@ -1056,6 +1065,11 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           onLogout={onLogout}
           onAvatarChange={setHomeAvatar}
           onNameChange={setHomeName}
+          onOpenRules={() => {
+            setPointsInitialTab('vip');
+            setPointsReturnScreen('Profile');
+            setCurrentScreen('Points');
+          }}
         />}
         {currentScreen === 'Admin' && isAdmin && AdminScreen()}
       </View>
