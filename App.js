@@ -133,21 +133,29 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     if (!user?.id) return;
     const cutoff = new Date().toISOString();
     try {
-      const [list, number] = await Promise.all([
+      const fields = 'id,appointment_id,type,title,body,created_at,visible_at,read_at';
+      const [newItems, oldItems, number] = await Promise.all([
         supabase.from('notifications')
-          .select('id,appointment_id,type,title,body,created_at,visible_at,read_at')
-          .eq('profile_id', user.id).lte('visible_at', cutoff)
+          .select(fields)
+          .eq('profile_id', user.id).is('read_at', null)
+          .lte('visible_at', cutoff)
           .order('visible_at', { ascending: false })
-          .order('created_at', { ascending: false })
-          .limit(100),
+          .limit(150),
+        supabase.from('notifications')
+          .select(fields)
+          .eq('profile_id', user.id).not('read_at', 'is', null)
+          .lte('visible_at', cutoff)
+          .order('visible_at', { ascending: false })
+          .limit(60),
         supabase.from('notifications')
           .select('id', { count: 'exact', head: true })
           .eq('profile_id', user.id).is('read_at', null)
           .lte('visible_at', cutoff),
       ]);
-      if (list.error) throw list.error;
+      if (newItems.error) throw newItems.error;
+      if (oldItems.error) throw oldItems.error;
       if (number.error) throw number.error;
-      setNotifications(list.data || []);
+      setNotifications([...(newItems.data || []), ...(oldItems.data || [])]);
       setUnreadNotifications(number.count || 0);
       setNotificationsError('');
     } catch (e) {
@@ -206,17 +214,24 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const loadAdminNotifications = useCallback(async () => {
     if (!isAdmin || !user?.id) return;
     try {
-      const [list, count] = await Promise.all([
+      const fields = 'id,recipient_id,appointment_id,type,priority,title,body,read_at,resolved_at,created_at,appointments(id,starts_at,status,price_at_booking,points_redeemed,notes,services(name,duration_minutes),profiles(full_name,phone))';
+      const [newItems, oldItems, count] = await Promise.all([
         supabase.from('admin_notifications')
-          .select('id,recipient_id,appointment_id,type,priority,title,body,read_at,resolved_at,created_at,appointments(id,starts_at,status,price_at_booking,points_redeemed,notes,services(name,duration_minutes),profiles(full_name,phone))')
-          .eq('recipient_id',user.id).order('created_at',{ascending:false}).limit(150),
+          .select(fields)
+          .eq('recipient_id',user.id).is('read_at',null)
+          .order('created_at',{ascending:false}).limit(150),
+        supabase.from('admin_notifications')
+          .select(fields)
+          .eq('recipient_id',user.id).not('read_at','is',null)
+          .order('created_at',{ascending:false}).limit(60),
         supabase.from('admin_notifications')
           .select('id',{count:'exact',head:true})
           .eq('recipient_id',user.id).is('read_at',null),
       ]);
-      if(list.error)throw list.error;
+      if(newItems.error)throw newItems.error;
+      if(oldItems.error)throw oldItems.error;
       if(count.error)throw count.error;
-      setAdminNotifications(list.data||[]);
+      setAdminNotifications([...(newItems.data||[]),...(oldItems.data||[])]);
       setUnreadAdminCount(count.count||0);
       setAdminNotificationError('');
     }catch(e){
