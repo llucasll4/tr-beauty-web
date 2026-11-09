@@ -83,10 +83,10 @@ function buildCalendar(monthKey, allowedDateKeys) {
   return cells;
 }
 
-function MainApp({ user, isAdmin, onLogout }) {
-  const [currentScreen, setCurrentScreen] = useState('Home');
+function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home', initialServiceId = null }) {
+  const [currentScreen, setCurrentScreen] = useState(initialScreen);
   const [adminSection, setAdminSection] = useState('agenda');
-  const [selectedServiceId, setSelectedServiceId] = useState(null);
+  const [selectedServiceId, setSelectedServiceId] = useState(initialServiceId);
   const [selectedDate, setSelectedDate] = useState(initialBookableDate);
   const [calendarMonth, setCalendarMonth] = useState(() => initialBookableDate().slice(0, 7));
   const [selectedTime, setSelectedTime] = useState(null);
@@ -216,7 +216,7 @@ function MainApp({ user, isAdmin, onLogout }) {
     setSelectedTime(null);
     setSlots([]);
     setBookingError('');
-    if (!selectedServiceId || !selectedDate) return;
+    if (!user || !selectedServiceId || !selectedDate) return;
     setSlotsLoading(true);
     supabase.rpc('available_slots', { p_service_id: selectedServiceId, p_date: selectedDate })
       .then(({ data, error }) => {
@@ -227,9 +227,10 @@ function MainApp({ user, isAdmin, onLogout }) {
       .catch(err => { if (!cancelled) setBookingError('Não foi possível consultar os horários: ' + err.message); })
       .finally(() => { if (!cancelled) setSlotsLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedServiceId, selectedDate, bookingSuccess]);
+  }, [user?.id, selectedServiceId, selectedDate, bookingSuccess]);
 
   async function confirmBooking() {
+    if (!user) { onRequestAuth('Booking', selectedServiceId); return; }
     if (!selectedServiceId || !selectedTime || bookingSaving) return;
     setBookingSaving(true);
     setBookingError('');
@@ -282,12 +283,27 @@ function MainApp({ user, isAdmin, onLogout }) {
           <Text style={styles.greeting}>Olá, bem-vinda! ✨</Text>
           <Text style={styles.subtitle}>Pronta para renovar suas unhas?</Text>
         </View>
-        <View style={styles.profileIcon}>
+        <TouchableOpacity style={styles.profileIcon} accessibilityRole="button"
+          accessibilityLabel={user ? 'Abrir perfil' : 'Entrar ou criar conta'}
+          onPress={() => user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
           <Ionicons name="person-outline" size={23} color={colors.ink} />
-        </View>
+        </TouchableOpacity>
       </View>
 
-      <LoyaltyCard />
+      {user ? <LoyaltyCard /> : (
+        <View style={styles.guestCard}>
+          <View style={styles.guestCardHeader}>
+            <Ionicons name="sparkles-outline" size={25} color={colors.mocha}/>
+            <Text style={styles.guestCardTitle}>Conheça a TR Beauty Concept</Text>
+          </View>
+          <Text style={styles.guestCardText}>Veja nossos serviços e trabalhos sem precisar criar uma conta. Para reservar um horário, entre ou cadastre-se.</Text>
+          <TouchableOpacity style={styles.guestCardButton} accessibilityRole="button"
+            onPress={() => onRequestAuth('Home')}>
+            <Text style={styles.guestCardButtonText}>Entrar ou criar conta</Text>
+            <Ionicons name="arrow-forward-outline" size={16} color={colors.mocha}/>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <TouchableOpacity style={styles.primaryButton} onPress={() => setCurrentScreen('Booking')}>
         <Text style={styles.primaryButtonText}>Agendar Meu Horário</Text>
@@ -311,11 +327,52 @@ function MainApp({ user, isAdmin, onLogout }) {
           </View>
         ))}
       </View>
-      <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
+      {user && <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
         <Ionicons name="log-out-outline" size={18} color={colors.mocha} />
         <Text style={styles.logoutText}>Sair da conta</Text>
-      </TouchableOpacity>
+      </TouchableOpacity>}
     </ScrollView>
+  );
+
+  const GuestBookingScreen = () => (
+    <View style={{ flex: 1 }}>
+      <View style={styles.pageHeader}>
+        <Text style={styles.pageTitle}>Agendar um serviço</Text>
+        <Text style={styles.subtitle}>Conheça os serviços e entre para escolher um horário</Text>
+      </View>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.guestCard}>
+          <View style={styles.guestCardHeader}>
+            <Ionicons name="lock-closed-outline" size={25} color={colors.mocha}/>
+            <Text style={styles.guestCardTitle}>Agendamento com cadastro</Text>
+          </View>
+          <Text style={styles.guestCardText}>Para consultar horários e confirmar uma reserva é necessário entrar ou criar sua conta gratuitamente.</Text>
+        </View>
+        <Text style={styles.sectionTitle}>Serviços disponíveis</Text>
+        {servicesLoading && <ActivityIndicator color={colors.mocha}/>}
+        {!!serviceError && <Text style={styles.loginError}>{serviceError}</Text>}
+        {activeServices.map(service => (
+          <TouchableOpacity key={service.id} accessibilityRole="button"
+            style={[styles.bookingCard, selectedServiceId === service.id && styles.bookingCardSelected, { marginBottom: 10 }]}
+            onPress={() => setSelectedServiceId(service.id)}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.serviceTitle}>{service.name}</Text>
+              <Text style={styles.serviceDetails}>{service.duration_minutes} min • {money(service.price)}</Text>
+              {!!service.description && <Text style={styles.subtitle}>{service.description}</Text>}
+            </View>
+            <Ionicons name={selectedServiceId === service.id ? 'radio-button-on' : 'radio-button-off'} size={22} color={colors.mocha}/>
+          </TouchableOpacity>
+        ))}
+        {!servicesLoading && !activeServices.length && <Text style={styles.subtitle}>Nenhum serviço disponível.</Text>}
+        <TouchableOpacity style={[styles.confirmButton, { marginTop: 22 }]}
+          onPress={() => onRequestAuth('Booking', selectedServiceId)} accessibilityRole="button">
+          <Text style={styles.confirmButtonText}>Entrar ou criar conta para agendar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setCurrentScreen('Portfolio')} style={{ alignSelf: 'center', padding: 18 }}>
+          <Text style={{ color: colors.mocha, fontWeight: '600' }}>Ver galeria de trabalhos</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 
   const BookingScreen = () => (
@@ -528,9 +585,9 @@ function MainApp({ user, isAdmin, onLogout }) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.mainContent}>
         {currentScreen === 'Home' && HomeScreen()}
-        {currentScreen === 'Booking' && BookingScreen()}
+        {currentScreen === 'Booking' && (user ? BookingScreen() : GuestBookingScreen())}
         {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
-        {currentScreen === 'Profile' && <ProfileScreen user={user} onLogout={onLogout}/>}
+        {currentScreen === 'Profile' && user && <ProfileScreen user={user} onLogout={onLogout}/>}
         {currentScreen === 'Admin' && isAdmin && AdminScreen()}
       </View>
 
@@ -547,9 +604,9 @@ function MainApp({ user, isAdmin, onLogout }) {
           <Ionicons name={currentScreen === 'Portfolio' ? 'image' : 'image-outline'} size={24} color={currentScreen === 'Portfolio' ? colors.ink : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Portfolio' && styles.navTextActive]}>Galeria</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Profile')}>
+        <TouchableOpacity style={styles.navItem} onPress={() => user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
           <Ionicons name={currentScreen === 'Profile' ? 'person' : 'person-outline'} size={24} color={currentScreen === 'Profile' ? colors.ink : colors.muted}/>
-          <Text style={[styles.navText,currentScreen === 'Profile' && styles.navTextActive]}>Perfil</Text>
+          <Text style={[styles.navText,currentScreen === 'Profile' && styles.navTextActive]}>{user ? 'Perfil' : 'Entrar'}</Text>
         </TouchableOpacity>
         {isAdmin && (
           <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Admin')}>
@@ -568,6 +625,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [authVisible, setAuthVisible] = useState(false);
+  const [returnScreen, setReturnScreen] = useState('Home');
+  const [returnServiceId, setReturnServiceId] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -631,9 +691,16 @@ export default function App() {
     };
   }, []);
 
+  function requestAuth(screen = 'Home', serviceId = null) {
+    setReturnScreen(screen);
+    setReturnServiceId(serviceId);
+    setAuthVisible(true);
+  }
+
   async function handleLogout() {
     const { error } = await supabase.auth.signOut();
     if (error) Alert.alert('Erro', 'Não foi possível sair da conta. Tente novamente.');
+    else { setAuthVisible(false); setReturnScreen('Home'); setReturnServiceId(null); }
   }
 
   if (loading) {
@@ -647,11 +714,14 @@ export default function App() {
 
   if (passwordRecovery) return <AuthScreen recovery onRecoveryDone={() => setPasswordRecovery(false)} />;
 
-  if (user) {
-    return <MainApp user={user} isAdmin={isAdmin} onLogout={handleLogout} />;
+  if (!user && authVisible) {
+    return <AuthScreen onBack={() => setAuthVisible(false)} />;
   }
 
-  return <AuthScreen />;
+  return <MainApp key={user?.id || 'guest'}
+    user={user} isAdmin={isAdmin} onLogout={handleLogout} onRequestAuth={requestAuth}
+    initialScreen={returnScreen}
+    initialServiceId={returnServiceId}/>;
 }
 
 const styles = StyleSheet.create({
@@ -670,6 +740,12 @@ const styles = StyleSheet.create({
   pointsValue: { fontSize: 48, fontWeight: '300', color: colors.ink, lineHeight: 52 },
   pointsLabel: { fontSize: 16, fontWeight: '500', color: colors.ink, marginBottom: 24 },
   pointsSubtitle: { fontSize: 12, color: '#5C5C5C' },
+  guestCard: { backgroundColor: colors.nude, borderRadius: 18, padding: 21, marginBottom: 22 },
+  guestCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  guestCardTitle: { color: colors.ink, fontWeight: '700', fontSize: 17, flex: 1 },
+  guestCardText: { color: colors.mocha, fontSize: 13, lineHeight: 21 },
+  guestCardButton: { backgroundColor: colors.white, borderRadius: 12, padding: 14, marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  guestCardButtonText: { color: colors.mocha, fontWeight: '700', fontSize: 14 },
   primaryButton: { backgroundColor: colors.ink, flexDirection: 'row', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 32 },
   primaryButtonText: { color: colors.background, fontSize: 16, fontWeight: '600', marginRight: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: colors.ink, marginBottom: 16 },
