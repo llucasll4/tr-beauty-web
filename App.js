@@ -547,7 +547,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       .catch(err => { if (!cancelled) setBookingError('Não foi possível consultar os horários: ' + err.message); })
       .finally(() => { if (!cancelled) setSlotsLoading(false); });
     return () => { cancelled = true; };
-  }, [user?.id, selectedServiceId, selectedDate, bookingSuccess]);
+  }, [user?.id, selectedServiceId, selectedDate, bookingSuccess, myAppointmentsRefresh]);
 
   async function confirmBooking() {
     if (!user) { onRequestAuth('Booking', selectedServiceId); return false; }
@@ -578,6 +578,14 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       return true;
     } catch (err) {
       setBookingError('Não foi possível reservar: ' + err.message);
+      // Outro atendimento pode ter preenchido a lacuna desde a seleção.
+      // Reconsulta a disponibilidade sem apagar a mensagem mostrada à cliente.
+      if (err.code === '23P01' ||
+          /horário (indisponível|acabou de ser reservado)/i.test(err.message || '')) {
+        setSelectedTime(null);
+        supabase.rpc('available_slots', { p_service_id: selectedServiceId, p_date: selectedDate })
+          .then(({data,error}) => { if (!error) setSlots(data || []); });
+      }
       if (paymentMethod==='points') reloadPoints();
       setBookingSuccess('');
       return false;
