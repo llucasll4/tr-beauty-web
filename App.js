@@ -4,7 +4,6 @@ import {
   Alert,
   Dimensions,
   Image,
-  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -30,6 +29,7 @@ import FinancialDashboard from './FinancialDashboard';
 import ClientAppointments from './ClientAppointments';
 import ClientNotifications from './ClientNotifications';
 import AdminNotifications from './AdminNotifications';
+import BookingWizard from './BookingWizard';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2;
@@ -312,6 +312,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   }, [user?.id]);
   const [bookingView, setBookingView] = useState(initialScreen === 'Booking' && initialServiceId ? 'new' : 'hub');
   const [myAppointmentsRefresh, setMyAppointmentsRefresh] = useState(0);
+  const [bookingStartStep,setBookingStartStep] = useState(initialServiceId && initialScreen === 'Booking' ? 2 : 1);
   const [adminSection, setAdminSection] = useState('agenda');
   const [selectedServiceId, setSelectedServiceId] = useState(initialServiceId);
   const [selectedDate, setSelectedDate] = useState(initialBookableDate);
@@ -321,10 +322,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
-  const [bookingConfirmationVisible, setBookingConfirmationVisible] = useState(false);
   const [bookingSaving, setBookingSaving] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [bookingWasRedeemed, setBookingWasRedeemed] = useState(false);
   const [pointsBalance, setPointsBalance] = useState(0);
   const [pointsEnabled, setPointsEnabled] = useState(false);
   const [pointsLoading, setPointsLoading] = useState(false);
@@ -484,38 +483,37 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   }, [user?.id, selectedServiceId, selectedDate, bookingSuccess]);
 
   async function confirmBooking() {
-    if (!user) { onRequestAuth('Booking', selectedServiceId); return; }
-    if (!selectedServiceId || !selectedTime || bookingSaving) return;
+    if (!user) { onRequestAuth('Booking', selectedServiceId); return false; }
+    if (!selectedServiceId || !selectedTime || bookingSaving) return false;
     if (paymentMethod==='points' &&
         (!pointsEnabled || pointsLoading || !Number.isInteger(chosenService?.redeem_points) ||
          pointsBalance < chosenService.redeem_points)) {
       setBookingError('O resgate não está disponível ou seu saldo de pontos é insuficiente.');
-      return;
+      return false;
     }
     setBookingSaving(true);
     setBookingError('');
     setBookingSuccess('');
     try {
       const withPoints=paymentMethod==='points';
-      const { error } = await supabase.rpc(
+      const { data, error } = await supabase.rpc(
         withPoints ? 'book_appointment_with_points' : 'book_appointment', {
           p_service_id: selectedServiceId, p_starts_at: selectedTime,
         });
       if (error) throw error;
+      if (!data) throw new Error('O servidor não retornou a identificação da reserva. Consulte seus agendamentos antes de tentar novamente.');
       // Pedido recebido: não confundir envio com confirmação do estúdio.
       setBookingSuccess('');
       setSelectedTime(null);
       setPaymentMethod('cash');
-      setBookingWasRedeemed(withPoints);
-      setBookingView('hub');
       setMyAppointmentsRefresh(value => value + 1);
-      setCurrentScreen('Home');
-      setBookingConfirmationVisible(true);
       if (isAdmin) await loadAppointments();
+      return true;
     } catch (err) {
       setBookingError('Não foi possível reservar: ' + err.message);
       if (paymentMethod==='points') reloadPoints();
       setBookingSuccess('');
+      return false;
     } finally { setBookingSaving(false); }
   }
 
@@ -608,7 +606,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       )}
 
       <TouchableOpacity style={styles.primaryButton}
-        onPress={() => { if (isAdmin) { setAdminSection('manual'); setCurrentScreen('Admin'); } else { setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } } }}>
+        onPress={() => { if (isAdmin) { setAdminSection('manual'); setCurrentScreen('Admin'); } else { setBookingStartStep(1);setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } } }}>
         <Text style={styles.primaryButtonText}>{isAdmin ? 'Agendar cliente' : 'Agendar Meu Horário'}</Text>
         <Ionicons name="calendar-outline" size={20} color={colors.background} />
       </TouchableOpacity>
@@ -635,184 +633,6 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         <Text style={styles.logoutText}>Sair da conta</Text>
       </TouchableOpacity>}
     </ScrollView>
-  );
-
-  const GuestBookingScreen = () => (
-    <View style={{ flex: 1 }}>
-      <View style={styles.pageHeader}>
-        <Text style={styles.pageTitle}>Agendar um serviço</Text>
-        <Text style={styles.subtitle}>Conheça os serviços e entre para escolher um horário</Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.guestCard}>
-          <View style={styles.guestCardHeader}>
-            <Ionicons name="lock-closed-outline" size={25} color={colors.mocha}/>
-            <Text style={styles.guestCardTitle}>Agendamento com cadastro</Text>
-          </View>
-          <Text style={styles.guestCardText}>Para consultar horários e confirmar uma reserva é necessário entrar ou criar sua conta gratuitamente.</Text>
-        </View>
-        <Text style={styles.sectionTitle}>Serviços disponíveis</Text>
-        {servicesLoading && <ActivityIndicator color={colors.mocha}/>}
-        {!!serviceError && <Text style={styles.loginError}>{serviceError}</Text>}
-        {activeServices.map(service => (
-          <TouchableOpacity key={service.id} accessibilityRole="button"
-            style={[styles.bookingCard, selectedServiceId === service.id && styles.bookingCardSelected, { marginBottom: 10 }]}
-            onPress={() => setSelectedServiceId(service.id)}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.serviceTitle}>{service.name}</Text>
-              <Text style={styles.serviceDetails}>{service.duration_minutes} min • {money(service.price)}</Text>
-              {!!service.description && <Text style={styles.subtitle}>{service.description}</Text>}
-            </View>
-            <Ionicons name={selectedServiceId === service.id ? 'radio-button-on' : 'radio-button-off'} size={22} color={colors.mocha}/>
-          </TouchableOpacity>
-        ))}
-        {!servicesLoading && !activeServices.length && <Text style={styles.subtitle}>Nenhum serviço disponível.</Text>}
-        <TouchableOpacity style={[styles.confirmButton, { marginTop: 22 }]}
-          onPress={() => onRequestAuth('Booking', selectedServiceId)} accessibilityRole="button">
-          <Text style={styles.confirmButtonText}>Entrar ou criar conta para agendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setCurrentScreen('Portfolio')} style={{ alignSelf: 'center', padding: 18 }}>
-          <Text style={{ color: colors.mocha, fontWeight: '600' }}>Ver galeria de trabalhos</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
-
-  const BookingScreen = () => (
-    <View style={{ flex: 1 }}>
-      <View style={[styles.pageHeader, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Voltar aos meus agendamentos"
-          style={{ padding: 7 }} onPress={() => { setBookingView('hub'); setBookingSuccess(''); }}>
-          <Ionicons name="arrow-back-outline" size={24} color={colors.ink}/>
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-        <Text style={styles.pageTitle}>Novo agendamento</Text>
-        <Text style={styles.subtitle}>Terça a sábado, das 09h às 18h • horário de Brasília</Text>
-        </View>
-      </View>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.sectionTitle}>1. Escolha o serviço</Text>
-        {activeServices.map(service => (
-          <TouchableOpacity key={service.id}
-            style={[styles.bookingCard, selectedServiceId === service.id && styles.bookingCardSelected, { marginBottom: 10 }]}
-            onPress={() => { setBookingSuccess(''); setBookingError(''); setSelectedServiceId(service.id); }}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.serviceTitle}>{service.name}</Text>
-              <Text style={styles.serviceDetails}>{service.duration_minutes} min • {money(service.price)}</Text>
-              <Text style={[styles.serviceDetails,{marginTop:5,color:colors.mocha}]}>
-                Resgate: {Number(service.redeem_points||0).toLocaleString('pt-BR')} TR Points
-              </Text>
-            </View>
-            <Ionicons name={selectedServiceId === service.id ? 'radio-button-on' : 'radio-button-off'} size={22} color={colors.mocha} />
-          </TouchableOpacity>
-        ))}
-        {!activeServices.length && <Text style={styles.subtitle}>Nenhum serviço ativo disponível.</Text>}
-        <Text style={[styles.sectionTitle,{marginTop:24}]}>2. Forma de pagamento</Text>
-        <View style={{flexDirection:'row',gap:10,marginBottom:14}}>
-          <TouchableOpacity onPress={()=>{setPaymentMethod('cash');setBookingError('');}}
-            accessibilityRole="button" accessibilityState={{selected:paymentMethod==='cash'}}
-            style={[styles.bookingCard,{flex:1,justifyContent:'center'},paymentMethod==='cash'&&styles.bookingCardSelected]}>
-            <Text style={{fontWeight:'700',color:colors.ink}}>No atendimento</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={()=>{setPaymentMethod('points');setBookingError('');}}
-            accessibilityRole="button" accessibilityState={{selected:paymentMethod==='points'}}
-            style={[styles.bookingCard,{flex:1,justifyContent:'center'},paymentMethod==='points'&&styles.bookingCardSelected]}>
-            <Text style={{fontWeight:'700',color:colors.ink}}>TR Points</Text>
-          </TouchableOpacity>
-        </View>
-        {paymentMethod==='points'&&<View style={[styles.simpleServiceCard,{marginBottom:16}]}>
-          <Text style={[styles.serviceTitle,{marginBottom:8}]}>Resgatar com TR Points</Text>
-          {pointsLoading?<ActivityIndicator color={colors.mocha}/>:
-           <Text style={styles.serviceDetails}>Saldo disponível: {pointsBalance.toLocaleString('pt-BR')} pts</Text>}
-          <Text style={[styles.serviceDetails,{marginTop:6}]}>
-            Custo do serviço: {Number(chosenService?.redeem_points||0).toLocaleString('pt-BR')} pts
-          </Text>
-          {!pointsLoading&&pointsEnabled&&pointsBalance<Number(chosenService?.redeem_points||0)&&
-            <Text style={[styles.loginError,{marginTop:10}]}>Pontos insuficientes para este resgate.</Text>}
-          {!pointsLoading&&!pointsEnabled&&
-            <Text style={[styles.loginError,{marginTop:10}]}>Programa de pontos indisponível no momento.</Text>}
-          {!!pointsError&&<Text style={styles.loginError}>{pointsError}</Text>}
-          <Text style={[styles.subtitle,{marginTop:10}]}>
-            Os pontos serão descontados ao enviar o pedido e devolvidos se o estúdio cancelar antes do atendimento.
-            Este serviço não gera novos pontos.
-          </Text>
-        </View>}
-        <Text style={[styles.sectionTitle,{marginTop:24}]}>3. Escolha a data</Text>
-        <View style={styles.calendarCard}>
-          <View style={styles.calendarHeader}>
-            <TouchableOpacity accessibilityLabel="Mês anterior" disabled={calendarMonth <= firstCalendarMonth}
-              onPress={() => setCalendarMonth(current => offsetMonth(current, -1))}
-              style={styles.calendarArrow}>
-              <Ionicons name="chevron-back" size={20} color={calendarMonth <= firstCalendarMonth ? '#D1C9C1' : colors.ink} />
-            </TouchableOpacity>
-            <Text style={styles.calendarMonthTitle}>{monthLabel(calendarMonth)}</Text>
-            <TouchableOpacity accessibilityLabel="Próximo mês" disabled={calendarMonth >= lastCalendarMonth}
-              onPress={() => setCalendarMonth(current => offsetMonth(current, 1))}
-              style={styles.calendarArrow}>
-              <Ionicons name="chevron-forward" size={20} color={calendarMonth >= lastCalendarMonth ? '#D1C9C1' : colors.ink} />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.calendarGrid}>
-            {WEEKDAYS.map(day => (
-              <View key={day} style={styles.calendarCell}>
-                <Text style={styles.calendarWeekday}>{day}</Text>
-              </View>
-            ))}
-            {calendarCells.map((day, index) => (
-              <View key={day?.key || `empty-${index}`} style={styles.calendarCell}>
-                {day && (
-                  <TouchableOpacity accessibilityRole="button"
-                    accessibilityLabel={`${day.day} de ${monthLabel(calendarMonth)}`}
-                    accessibilityState={{ disabled: !day.enabled, selected: selectedDate === day.key }}
-                    disabled={!day.enabled}
-                    onPress={() => {
-                      setBookingSuccess('');
-                      setBookingError('');
-                      setSelectedDate(day.key);
-                    }}
-                    style={[styles.calendarDay, day.enabled && styles.calendarDayEnabled,
-                      selectedDate === day.key && styles.calendarDaySelected]}>
-                    <Text style={[styles.calendarDayText, !day.enabled && styles.calendarDayDisabledText,
-                      selectedDate === day.key && styles.calendarDaySelectedText]}>{day.day}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-          </View>
-          <Text style={styles.calendarHint}>Terça a sábado • datas disponíveis nos próximos 30 dias</Text>
-        </View>
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>4. Horários disponíveis</Text>
-        {slotsLoading && <ActivityIndicator color={colors.mocha} />}
-        {!slotsLoading && chosenService && slots.length === 0 && !bookingError && (
-          <Text style={styles.subtitle}>Não há horários disponíveis nesta data. Escolha outra.</Text>
-        )}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
-          {slots.map(item => {
-            const chosen = selectedTime === item.starts_at;
-            return (
-              <TouchableOpacity key={item.starts_at} onPress={() => { setSelectedTime(item.starts_at); setBookingSuccess(''); }}
-                style={chosen ? styles.timeBoxSelected : styles.timeBox}>
-                <Text style={chosen ? styles.optionSelectedText : styles.optionText}>{brazilClock.format(new Date(item.starts_at))}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {!!bookingError && <Text style={[styles.loginError, { marginTop: 15 }]}>{bookingError}</Text>}
-        {!!bookingSuccess && <Text style={[styles.successText, { marginTop: 15 }]}>{bookingSuccess}</Text>}
-      </ScrollView>
-      <View style={styles.footerBooking}>
-        {!!selectedTime && <Text style={[styles.subtitle, { marginBottom: 8 }]}>Selecionado: {readableDate(selectedTime)}</Text>}
-        <TouchableOpacity disabled={!selectedTime || bookingSaving || slotsLoading ||
-          (paymentMethod==='points' && (pointsLoading || !pointsEnabled ||
-           !chosenService?.redeem_points || pointsBalance<chosenService.redeem_points))}
-          onPress={confirmBooking}
-          style={[styles.confirmButton, (!selectedTime || bookingSaving || slotsLoading ||
-            (paymentMethod==='points' && (pointsLoading || !pointsEnabled ||
-             !chosenService?.redeem_points || pointsBalance<chosenService.redeem_points))) && { opacity: 0.45 }]}>
-          {bookingSaving ? <ActivityIndicator color={colors.white} /> : <Text style={styles.confirmButtonText}>{paymentMethod==='points'?'Resgatar e confirmar pedido':'Confirmar reserva'}</Text>}
-        </TouchableOpacity>
-      </View>
-    </View>
   );
 
   const AdminScreen = () => adminSection === 'perfil' ? (
@@ -959,14 +779,47 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.mainContent}>
         {currentScreen === 'Home' && HomeScreen()}
-        {currentScreen === 'Booking' && !isAdmin && (user
-          ? (bookingView === 'new' ? BookingScreen() : (
-              <ClientAppointments userId={user.id}
-                refreshSignal={myAppointmentsRefresh}
-                notice={bookingSuccess}
-                onNewBooking={() => { setBookingSuccess(''); setBookingView('new'); }}/>
-            ))
-          : GuestBookingScreen())}
+        {currentScreen === 'Booking' && !isAdmin && (user && bookingView !== 'new' ? (
+          <ClientAppointments userId={user.id}
+            refreshSignal={myAppointmentsRefresh}
+            notice={bookingSuccess}
+            onNewBooking={() => { setBookingSuccess('');setBookingStartStep(1);setPaymentMethod('cash');setBookingView('new'); }}/>
+        ) : (
+          <BookingWizard
+            user={user}
+            services={services}
+            servicesLoading={servicesLoading}
+            serviceError={serviceError}
+            selectedServiceId={selectedServiceId}
+            setSelectedServiceId={setSelectedServiceId}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            selectedTime={selectedTime}
+            setSelectedTime={setSelectedTime}
+            slots={slots}
+            slotsLoading={slotsLoading}
+            error={bookingError}
+            onClearError={() => setBookingError('')}
+            paymentMethod={paymentMethod}
+            setPaymentMethod={setPaymentMethod}
+            pointsBalance={pointsBalance}
+            pointsEnabled={pointsEnabled}
+            pointsLoading={pointsLoading}
+            pointsError={pointsError}
+            calendarMonth={calendarMonth}
+            setCalendarMonth={setCalendarMonth}
+            calendarCells={calendarCells}
+            firstCalendarMonth={firstCalendarMonth}
+            lastCalendarMonth={lastCalendarMonth}
+            saving={bookingSaving}
+            initialStep={bookingStartStep}
+            onConfirm={confirmBooking}
+            onExit={() => user ? setBookingView('hub') : setCurrentScreen('Home')}
+            onHome={() => {setBookingView('hub');setCurrentScreen('Home');}}
+            onReservations={() => {setBookingView('hub');setCurrentScreen('Booking');}}
+            onRequireAuth={serviceId => onRequestAuth('Booking',serviceId)}
+          />
+        ))}
         {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
         {currentScreen === 'Notifications' && user && isAdmin && <AdminNotifications
           items={adminNotifications}
@@ -995,7 +848,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             else { setBookingView('hub'); setCurrentScreen('Booking'); }
           }}
         />}
-        {currentScreen === 'Points' && user && !isAdmin && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')} onRedeem={() => { setPaymentMethod('points');setBookingView('new');setBookingSuccess('');setCurrentScreen('Booking'); }}/>}
+        {currentScreen === 'Points' && user && !isAdmin && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')} onRedeem={() => { setBookingStartStep(1);setPaymentMethod('points');setBookingView('new');setBookingSuccess('');setCurrentScreen('Booking'); }}/>}
         {currentScreen === 'Profile' && user && !isAdmin && <ProfileScreen
           user={user}
           onLogout={onLogout}
@@ -1030,40 +883,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           </TouchableOpacity>
         )}
       </View>
-      <Modal visible={bookingConfirmationVisible} transparent animationType="fade"
-        onRequestClose={() => setBookingConfirmationVisible(false)}>
-        <View style={styles.confirmationBackdrop}>
-          <View style={styles.confirmationCard} accessibilityRole="alert">
-            <View style={styles.confirmationIconCircle}>
-              <Ionicons name="checkmark-circle-outline" size={42} color="#247047" />
-            </View>
-            <Text style={styles.confirmationTitle}>Pedido de agendamento enviado!</Text>
-            <Text style={styles.confirmationMessage}>
-              {bookingWasRedeemed ? 'Seu resgate foi registrado e os pontos foram descontados. O atendimento aguarda a confirmação do estúdio.' : 'Seu pedido foi registrado com sucesso e está aguardando a confirmação do estúdio.'}
-            </Text>
-            <Text style={styles.confirmationHint}>
-              Para acompanhar seus pedidos futuros e visualizar agendamentos anteriores,
-              acesse a aba Reservas.
-            </Text>
-            <TouchableOpacity accessibilityRole="button"
-              accessibilityLabel="Ver minhas reservas" style={styles.confirmationPrimaryButton}
-              onPress={() => {
-                setBookingConfirmationVisible(false);
-                setBookingView('hub');
-                setCurrentScreen('Booking');
-              }}>
-              <Ionicons name="calendar-outline" size={20} color={colors.white} />
-              <Text style={styles.confirmationPrimaryText}>Ver minhas reservas</Text>
-            </TouchableOpacity>
-            <TouchableOpacity accessibilityRole="button"
-              accessibilityLabel="Entendi, continuar na tela inicial"
-              style={styles.confirmationSecondaryButton}
-              onPress={() => setBookingConfirmationVisible(false)}>
-              <Text style={styles.confirmationSecondaryText}>Entendi, continuar no Início</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+
     </SafeAreaView>
   );
 }
