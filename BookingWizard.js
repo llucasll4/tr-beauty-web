@@ -313,7 +313,7 @@ export default function BookingWizard({
             </TouchableOpacity>;
           })}
         </View>
-        <Text style={s.guide}>Horários disponíveis de acordo com a agenda do estúdio · Brasília</Text>
+        <Text style={s.guide}>Horários dinâmicos com 15 min de preparação após cada atendimento · horário de Brasília</Text>
       </>}
 
       {step===3&&service&&<>

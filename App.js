@@ -90,7 +90,7 @@ const initialBookableDate = () => futureDates().find(({ key }) => {
   const weekday = new Date(`${key}T12:00:00Z`).getUTCDay();
   return weekday >= 2 && weekday <= 6;
 })?.key || localDateKey(new Date());
-function buildCalendar(monthKey, allowedDateKeys) {
+function buildCalendar(monthKey, allowedDateKeys, openWeekdays = null) {
   const [year, month] = monthKey.split('-').map(Number);
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const firstColumn = (firstWeekday + 6) % 7; // Segunda-feira primeiro
@@ -99,7 +99,7 @@ function buildCalendar(monthKey, allowedDateKeys) {
   for (let day = 1; day <= daysInMonth; day++) {
     const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-    cells.push({ key, day, enabled: allowedDateKeys.has(key) && weekday >= 2 && weekday <= 6 });
+    cells.push({ key, day, enabled: allowedDateKeys.has(key) && (!openWeekdays || openWeekdays.has(weekday)) });
   }
   while (cells.length % 7) cells.push(null);
   return cells;
@@ -348,6 +348,19 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentsError, setAppointmentsError] = useState('');
   const [statusSavingId, setStatusSavingId] = useState(null);
+  const [openWeekdays, setOpenWeekdays] = useState(null);
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) { setOpenWeekdays(null); return () => { active = false; }; }
+    // O calendário reflete os dias habilitados no Supabase (não um conjunto fixo).
+    supabase.from('business_hours').select('weekday').eq('enabled', true)
+      .then(({data,error}) => {
+        if(!active) return;
+        // Em caso de falha, a RPC ainda valida o expediente ao escolher o dia.
+        if(!error) setOpenWeekdays(new Set((data || []).map(row => Number(row.weekday))));
+      });
+    return () => { active = false; };
+  }, [user?.id]);
   const [services, setServices] = useState([]);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [serviceError, setServiceError] = useState('');
@@ -495,7 +508,19 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
 
   const dates = futureDates();
   const allowedDateKeys = new Set(dates.map(date => date.key));
-  const calendarCells = buildCalendar(calendarMonth, allowedDateKeys);
+  const calendarCells = buildCalendar(calendarMonth, allowedDateKeys, openWeekdays);
+  useEffect(() => {
+    if (!openWeekdays || !openWeekdays.size) return;
+    const chosenWeekday = new Date(selectedDate + 'T12:00:00Z').getUTCDay();
+    if (!openWeekdays.has(chosenWeekday)) {
+      const nextDay = futureDates().find(({key}) =>
+        openWeekdays.has(new Date(key + 'T12:00:00Z').getUTCDay()));
+      if (nextDay) {
+        setSelectedDate(nextDay.key);
+        setCalendarMonth(nextDay.key.slice(0, 7));
+      }
+    }
+  }, [openWeekdays, selectedDate]);
   const firstCalendarMonth = dates[0].key.slice(0, 7);
   const lastCalendarMonth = dates[dates.length - 1].key.slice(0, 7);
   const chosenService = activeServices.find(s => s.id === selectedServiceId);
@@ -522,7 +547,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       .catch(err => { if (!cancelled) setBookingError('Não foi possível consultar os horários: ' + err.message); })
       .finally(() => { if (!cancelled) setSlotsLoading(false); });
     return () => { cancelled = true; };
-  }, [user?.id, selectedServiceId, selectedDate, bookingSuccess]);
+  }, [user?.id, selectedServiceId, selectedDate, bookingSuccess, myAppointmentsRefresh]);
 
   async function confirmBooking() {
     if (!user) { onRequestAuth('Booking', selectedServiceId); return false; }
@@ -553,6 +578,14 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       return true;
     } catch (err) {
       setBookingError('Não foi possível reservar: ' + err.message);
+      // Outro atendimento pode ter preenchido a lacuna desde a seleção.
+      // Reconsulta a disponibilidade sem apagar a mensagem mostrada à cliente.
+      if (err.code === '23P01' ||
+          /horário (indisponível|acabou de ser reservado)/i.test(err.message || '')) {
+        setSelectedTime(null);
+        supabase.rpc('available_slots', { p_service_id: selectedServiceId, p_date: selectedDate })
+          .then(({data,error}) => { if (!error) setSlots(data || []); });
+      }
       if (paymentMethod==='points') reloadPoints();
       setBookingSuccess('');
       return false;
