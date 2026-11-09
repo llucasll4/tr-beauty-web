@@ -21,6 +21,7 @@ import AdminCalendar from './AdminCalendar';
 import AdminClients from './AdminClients';
 import LoyaltyCard from './LoyaltyCard';
 import PortfolioScreen from './PortfolioScreen';
+import FinancialDashboard from './FinancialDashboard';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2;
@@ -414,14 +415,17 @@ function MainApp({ user, isAdmin, onLogout }) {
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: '#F4F5F7', flexGrow: 1 }]}>
       <View style={{ marginBottom: 20, marginTop: 10 }}>
         <Text style={styles.greeting}>Painel Admin 👩‍💻</Text>
-        <Text style={styles.subtitle}>Agenda, clientes e serviços do estúdio</Text>
+        <Text style={styles.subtitle}>Agenda, clientes, serviços e indicadores do estúdio</Text>
       </View>
-      <View style={styles.adminTabs}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        style={{ marginBottom: 21 }}
+        contentContainerStyle={[styles.adminTabs, { minWidth: 545, marginBottom: 0 }]}>
         {[
           ['agenda', 'Agenda'],
           ['clientes', 'Clientes'],
           ['servicos', 'Serviços'],
           ['portfolio', 'Portfólio'],
+          ['financeiro', 'Financeiro'],
         ].map(([id, label]) => (
           <TouchableOpacity
             key={id}
@@ -433,10 +437,11 @@ function MainApp({ user, isAdmin, onLogout }) {
             <Text style={[styles.adminTabText, adminSection === id && styles.adminTabTextActive]}>{label}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
       {adminSection === 'agenda' && <AdminCalendar />}
       {adminSection === 'clientes' && <AdminClients />}
       {adminSection === 'portfolio' && <PortfolioScreen adminMode services={services} />}
+      {adminSection === 'financeiro' && <FinancialDashboard />}
       {adminSection === 'servicos' && (
         <View>
         <Text style={styles.sectionTitle}>Gerenciar serviços</Text>
