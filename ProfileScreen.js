@@ -33,7 +33,7 @@ function CropSlider({label,value,min,max,step=1,onChange,disabled}) {
     })}
   </View>;
 }
-export default function ProfileScreen({user,onLogout}) {
+export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{}}) {
  const [name,setName]=useState('');
  const [phone,setPhone]=useState('');
  const [email,setEmail]=useState(user?.email||'');
@@ -143,6 +143,9 @@ export default function ProfileScreen({user,onLogout}) {
      if(profileError)throw profileError;
      // Mantém a prévia local na tela até o próximo carregamento do perfil.
      setAvatarPath(path);setAvatarVersion(Date.now());
+     // Compartilha a versão recortada com a Home logo após salvar no Supabase.
+     // Evita imagem antiga em cache e dispensa recarregar ou refazer login.
+     onAvatarChange(preview);
      setEditorOpen(false);setEditorImage(null);selectedImageRef.current=null;
      setFileKey(v=>v+1);say('Foto de perfil atualizada!');
    }catch(e){
