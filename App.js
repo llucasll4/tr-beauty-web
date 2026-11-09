@@ -4,6 +4,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Linking,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -659,6 +660,63 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         <Ionicons name="log-out-outline" size={18} color={colors.mocha} />
         <Text style={styles.logoutText}>Sair da conta</Text>
       </TouchableOpacity>}
+
+      <View style={styles.studioInfoCard}>
+        <View style={styles.studioInfoHeader}>
+          <View style={styles.studioInfoLogo}>
+            <Ionicons name="sparkles-outline" color={colors.mocha} size={22}/>
+          </View>
+          <View style={{flex:1}}>
+            <Text style={styles.studioInfoHeading}>TR Beauty Concept</Text>
+            <Text style={styles.studioInfoTagline}>Informações do estúdio</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity accessibilityRole="link"
+          accessibilityLabel="Ligar para o estúdio: 11 94690-1167"
+          onPress={() => Linking.openURL('tel:+5511946901167')}
+          style={styles.studioInfoRow}>
+          <View style={styles.studioInfoRowIcon}>
+            <Ionicons name="call-outline" size={20} color={colors.mocha}/>
+          </View>
+          <View style={styles.studioInfoRowText}>
+            <Text style={styles.studioInfoLabel}>Telefone do estúdio</Text>
+            <Text style={styles.studioInfoValue}>(11) 94690-1167</Text>
+          </View>
+          <Ionicons name="arrow-up-forward-outline" size={17} color={colors.mocha}/>
+        </TouchableOpacity>
+
+        <View style={styles.studioInfoDivider}/>
+        <View style={styles.studioInfoRow}>
+          <View style={styles.studioInfoRowIcon}>
+            <Ionicons name="business-outline" size={20} color={colors.mocha}/>
+          </View>
+          <View style={styles.studioInfoRowText}>
+            <Text style={styles.studioInfoLabel}>CNPJ</Text>
+            <Text style={styles.studioInfoValue}>65.056.708/0001-00</Text>
+          </View>
+        </View>
+
+        <View style={styles.studioInfoDivider}/>
+        <TouchableOpacity accessibilityRole="link"
+          accessibilityLabel="Ver localização do estúdio no mapa"
+          onPress={() => Linking.openURL(
+            'https://www.google.com/maps/search/?api=1&query=' +
+            encodeURIComponent('Rua Santa Cruz, 537, Diadema, SP')
+          )}
+          style={styles.studioInfoRow}>
+          <View style={styles.studioInfoRowIcon}>
+            <Ionicons name="location-outline" size={20} color={colors.mocha}/>
+          </View>
+          <View style={styles.studioInfoRowText}>
+            <Text style={styles.studioInfoLabel}>Endereço</Text>
+            <Text style={styles.studioInfoValue}>Rua Santa Cruz, 537</Text>
+            <Text style={styles.studioInfoAddress}>Diadema – SP</Text>
+          </View>
+          <Ionicons name="arrow-up-forward-outline" size={17} color={colors.mocha}/>
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.studioInfoFooter}>Estúdio especializado em unhas 💅</Text>
     </ScrollView>
   );
 
@@ -1146,6 +1204,22 @@ const styles = StyleSheet.create({
   confirmationPrimaryText: { color: colors.white, fontWeight: '700', fontSize: 15 },
   confirmationSecondaryButton: { marginTop: 10, paddingVertical: 13, paddingHorizontal: 10 },
   confirmationSecondaryText: { color: colors.mocha, fontWeight: '600', fontSize: 13 },
+  studioInfoCard: { marginTop: 27, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 19, backgroundColor: colors.white, padding: 20 },
+  studioInfoHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
+  studioInfoLogo: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.nude,
+    alignItems: 'center', justifyContent: 'center' },
+  studioInfoHeading: { color: colors.ink, fontWeight: '700', fontSize: 17 },
+  studioInfoTagline: { color: colors.mocha, fontSize: 12, marginTop: 4 },
+  studioInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 10 },
+  studioInfoRowIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#F5F0EB',
+    alignItems: 'center', justifyContent: 'center' },
+  studioInfoRowText: { flex: 1, minWidth: 0 },
+  studioInfoLabel: { color: colors.muted, fontSize: 11, marginBottom: 4 },
+  studioInfoValue: { color: colors.ink, fontSize: 14, fontWeight: '600' },
+  studioInfoAddress: { color: colors.mocha, fontSize: 12, marginTop: 3 },
+  studioInfoDivider: { height: 1, backgroundColor: colors.border, marginVertical: 5 },
+  studioInfoFooter: { marginTop: 13, color: colors.mocha, textAlign: 'center', fontSize: 11 },
   logoutButton: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: 8, paddingVertical: 14, marginTop: 26 },
   logoutText: { color: colors.mocha, fontWeight: '600' },
   loadingPage: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
