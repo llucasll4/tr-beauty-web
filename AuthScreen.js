@@ -102,7 +102,7 @@ export default function AuthScreen({
         );
       }
 
-      if (mode === 'signup' && !name.trim()) {
+      if (mode === 'signup' && name.trim().length < 2) {
         throw new Error('Informe seu nome completo.');
       }
 
@@ -122,6 +122,10 @@ export default function AuthScreen({
 
       const normalizedEmail =
         email.trim().toLowerCase();
+
+      if (mode === 'signup' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        throw new Error('Informe um e-mail válido para criar sua conta.');
+      }
 
       if (mode === 'signup') {
         const { data, error } =
@@ -321,6 +325,12 @@ export default function AuthScreen({
             : 'Bem-vinda ao seu espaço de beleza'}
         </Text>
 
+        {mode === 'signup' && (
+          <Text style={s.requiredNote}>
+            Todos os campos são obrigatórios.
+          </Text>
+        )}
+
         {/* CAMPOS DE LOGIN, CADASTRO E RECUPERAÇÃO */}
         {(
           mode === 'login' ||
@@ -331,7 +341,7 @@ export default function AuthScreen({
             {mode === 'signup' && (
               <>
                 <Text style={s.label}>
-                  Nome completo
+                  Nome completo *
                 </Text>
 
                 <TextInput
@@ -364,7 +374,7 @@ export default function AuthScreen({
             )}
 
             <Text style={s.label}>
-              E-mail
+              {mode === 'signup' ? 'E-mail *' : 'E-mail'}
             </Text>
 
             <TextInput
@@ -380,7 +390,7 @@ export default function AuthScreen({
             {mode !== 'reset' && (
               <>
                 <Text style={s.label}>
-                  Senha
+                  {mode === 'signup' ? 'Senha *' : 'Senha'}
                 </Text>
 
                 <TextInput
@@ -671,6 +681,8 @@ const s = StyleSheet.create({
   codeInput:{textAlign:'center',fontSize:24,letterSpacing:5,fontWeight:'700'},
   codeHint:{fontSize:12,lineHeight:19,color:C.muted,marginBottom:18,textAlign:'center'},
   phoneHint:{fontSize:12,color:C.muted,lineHeight:18,marginTop:-9,marginBottom:18},
+  requiredNote:{fontSize:12,color:C.mocha,textAlign:'center',
+    marginTop:-13,marginBottom:24,fontWeight:'600'},
   foot: {
     textAlign: 'center',
     color: C.muted,
