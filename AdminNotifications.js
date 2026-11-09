@@ -24,6 +24,7 @@ export default function AdminNotifications({
   const [rejectId,setRejectId]=useState(null);
   const [actionError,setActionError]=useState('');
   const [actionSuccess,setActionSuccess]=useState('');
+  const [showRead,setShowRead]=useState(false);
   const visible=useMemo(()=>[...items].filter(n=>{
     const a=one(n.appointments);
     if(filter==='pending')return n.type==='booking_requested'&&a?.status==='pending'&&!n.resolved_at;
@@ -31,6 +32,9 @@ export default function AdminNotifications({
     return true;
   }).sort((a,b)=>(types[a.type]?.rank??3)-(types[b.type]?.rank??3)||
     new Date(b.created_at).getTime()-new Date(a.created_at).getTime()),[items,filter]);
+
+  const unread=useMemo(()=>visible.filter(item=>!item.read_at),[visible]);
+  const read=useMemo(()=>visible.filter(item=>!!item.read_at),[visible]);
 
   async function decide(item,status){
     if(busyId)return;
@@ -45,48 +49,8 @@ export default function AdminNotifications({
   function toggleDetails(item){
     const open=expanded!==item.id;
     setExpanded(open?item.id:null);setRejectId(null);
-    if(open&&!item.read_at)onMarkRead(item.id);
   }
-  return <View style={s.root}>
-    <View style={s.header}>
-      <TouchableOpacity style={s.back} onPress={onBack} accessibilityRole="button" accessibilityLabel="Voltar para Início">
-        <Ionicons name="arrow-back-outline" size={22} color={C.ink}/></TouchableOpacity>
-      <View style={{flex:1}}>
-        <Text style={s.title}>Central de Controle</Text>
-        <Text style={s.helper}>{unreadCount?unreadCount+' alertas não lidos':'Sua operação em dia'}</Text>
-      </View>
-      <TouchableOpacity style={s.back} onPress={onRefresh} accessibilityRole="button" accessibilityLabel="Atualizar alertas">
-        <Ionicons name="refresh-outline" size={21} color={C.mocha}/></TouchableOpacity>
-    </View>
-    <ScrollView contentContainerStyle={s.content}>
-      <View style={s.row}>
-        <View style={{flex:1}}>
-          <Text style={s.section}>Alertas da administração</Text>
-          <Text style={s.helper}>Agendamentos, cancelamentos e avisos críticos</Text>
-        </View>
-        {unreadCount>0&&<TouchableOpacity accessibilityRole="button" onPress={onMarkAll}>
-          <Text style={s.link}>Marcar tudo como lido</Text></TouchableOpacity>}
-      </View>
-      <View style={[s.row,{justifyContent:'flex-start',marginVertical:15}]}>
-        {[['all','Todos'],['pending','Aguardando decisão'],['critical','Críticos']].map(([key,label])=>
-          <TouchableOpacity key={key} accessibilityRole="button" accessibilityState={{selected:key===filter}}
-            onPress={()=>setFilter(key)} style={[s.filter,key===filter&&s.filterActive]}>
-            <Text style={[s.filterText,key===filter&&{color:C.white}]}>{label}</Text></TouchableOpacity>)}
-      </View>
-      {!!actionError&&<Text style={s.error}>{actionError}</Text>}
-      {!!actionSuccess&&<Text style={s.success}>{actionSuccess}</Text>}
-      {!!error&&<View style={s.box}><Text style={s.error}>{error}</Text>
-        <TouchableOpacity onPress={onRefresh}><Text style={s.link}>Tentar novamente</Text></TouchableOpacity></View>}
-      {loading&&<View style={s.empty}><ActivityIndicator color={C.mocha}/>
-        <Text style={s.helper}>Carregando alertas...</Text></View>}
-      {!loading&&!error&&!visible.length&&<View style={s.empty}>
-        <Ionicons name="checkmark-done-circle-outline" color={C.green} size={41}/>
-        <Text style={s.section}>Tudo em dia!</Text>
-        <Text style={[s.helper,{textAlign:'center'}]}>
-          {filter==='pending'?'Nenhum pedido aguarda decisão.':filter==='critical'
-            ?'Nenhum alerta crítico no momento.':'Novos eventos aparecerão aqui automaticamente.'}
-        </Text></View>}
-      {!loading&&visible.map(item=>{
+  const renderAlert=(item,compact=false)=>{
         const app=one(item.appointments);
         const profile=one(app?.profiles);
         const service=one(app?.services);
@@ -94,6 +58,19 @@ export default function AdminNotifications({
         const pending=item.type==='booking_requested'&&app?.status==='pending'&&!item.resolved_at;
         const open=item.id===expanded,busy=item.id===busyId;
         const pts=Number(app?.points_redeemed||0);
+        if(compact && !open) return <TouchableOpacity key={item.id}
+          onPress={()=>toggleDetails(item)} accessibilityRole="button"
+          accessibilityLabel={'Abrir alerta lido: '+item.title}
+          style={s.compactCard}>
+          <View style={s.compactIcon}>
+            <Ionicons name={meta.icon} size={19} color={meta.color}/>
+          </View>
+          <View style={{flex:1,minWidth:0}}>
+            <Text style={s.compactTitle} numberOfLines={1}>{item.title}</Text>
+            <Text style={s.compactDate}>{when(item.created_at)} · {pending?'Aguardando decisão':app?.status==='confirmed'?'Confirmado':app?.status==='cancelled'?'Cancelado':'Lido'}</Text>
+          </View>
+          <Ionicons name="chevron-down-outline" size={18} color={C.mocha}/>
+        </TouchableOpacity>;
         return <View key={item.id} style={[s.card,item.priority==='critical'&&s.criticalCard]}>
           <View style={s.row}>
             <View style={[s.pill,{backgroundColor:meta.bg}]}>
@@ -157,7 +134,80 @@ export default function AdminNotifications({
             </TouchableOpacity>
           </View>
         </View>;
-      })}
+      };
+  return <View style={s.root}>
+    <View style={s.header}>
+      <TouchableOpacity style={s.back} onPress={onBack} accessibilityRole="button" accessibilityLabel="Voltar para Início">
+        <Ionicons name="arrow-back-outline" size={22} color={C.ink}/></TouchableOpacity>
+      <View style={{flex:1}}>
+        <Text style={s.title}>Central de Controle</Text>
+        <Text style={s.helper}>{unreadCount?unreadCount+' alertas não lidos':'Sua operação em dia'}</Text>
+      </View>
+      <TouchableOpacity style={s.back} onPress={onRefresh} accessibilityRole="button" accessibilityLabel="Atualizar alertas">
+        <Ionicons name="refresh-outline" size={21} color={C.mocha}/></TouchableOpacity>
+    </View>
+    <ScrollView contentContainerStyle={s.content}>
+      <View style={s.row}>
+        <View style={{flex:1}}>
+          <Text style={s.section}>Alertas da administração</Text>
+          <Text style={s.helper}>Agendamentos, cancelamentos e avisos críticos</Text>
+        </View>
+        {unreadCount>0&&<TouchableOpacity accessibilityRole="button" onPress={onMarkAll}>
+          <Text style={s.link}>Marcar tudo como lido</Text></TouchableOpacity>}
+      </View>
+      <View style={[s.row,{justifyContent:'flex-start',marginVertical:15}]}>
+        {[['all','Todos'],['pending','Aguardando decisão'],['critical','Críticos']].map(([key,label])=>
+          <TouchableOpacity key={key} accessibilityRole="button" accessibilityState={{selected:key===filter}}
+            onPress={()=>setFilter(key)} style={[s.filter,key===filter&&s.filterActive]}>
+            <Text style={[s.filterText,key===filter&&{color:C.white}]}>{label}</Text></TouchableOpacity>)}
+      </View>
+      {!!actionError&&<Text style={s.error}>{actionError}</Text>}
+      {!!actionSuccess&&<Text style={s.success}>{actionSuccess}</Text>}
+      {!!error&&<View style={s.box}><Text style={s.error}>{error}</Text>
+        <TouchableOpacity onPress={onRefresh}><Text style={s.link}>Tentar novamente</Text></TouchableOpacity></View>}
+      {loading&&<View style={s.empty}><ActivityIndicator color={C.mocha}/>
+        <Text style={s.helper}>Carregando alertas...</Text></View>}
+      {!loading&&!error&&!visible.length&&<View style={s.empty}>
+        <Ionicons name="checkmark-done-circle-outline" color={C.green} size={41}/>
+        <Text style={s.section}>Tudo em dia!</Text>
+        <Text style={[s.helper,{textAlign:'center'}]}>
+          {filter==='pending'?'Nenhum pedido aguarda decisão.':filter==='critical'
+            ?'Nenhum alerta crítico no momento.':'Novos eventos aparecerão aqui automaticamente.'}
+        </Text></View>}
+
+      {!loading&&!error&&visible.length>0&&<>
+        <View style={s.sectionHeading}>
+          <View style={s.sectionTitleRow}>
+            <Ionicons name="mail-unread-outline" size={19} color={C.mocha}/>
+            <Text style={s.section}>Não lidas</Text>
+            <View style={s.unreadCountPill}><Text style={s.unreadCountText}>{filter==='all'?unreadCount:unread.length}</Text></View>
+          </View>
+        </View>
+        {unread.length?unread.map(item=>renderAlert(item,false)):
+          <View style={s.allCaughtUp}>
+            <Ionicons name="checkmark-circle-outline" size={22} color={C.green}/>
+            <Text style={s.caughtUpText}>Nenhum alerta não lido nesta categoria.</Text>
+          </View>}
+        {read.length>0&&<View style={s.readSection}>
+          <TouchableOpacity accessibilityRole="button"
+            accessibilityState={{expanded:showRead}}
+            accessibilityLabel={(showRead?'Ocultar':'Mostrar')+' alertas lidos'}
+            style={s.readToggle} onPress={()=>setShowRead(value=>!value)}>
+            <View style={s.sectionTitleRow}>
+              <Ionicons name="checkmark-done-outline" size={19} color={C.muted}/>
+              <Text style={s.readHeading}>Lidas</Text>
+              <View style={s.readCountPill}><Text style={s.readCountText}>{read.length}</Text></View>
+            </View>
+            <View style={s.toggleAction}>
+              <Text style={s.toggleText}>{showRead?'Ocultar':'Mostrar'}</Text>
+              <Ionicons name={showRead?'chevron-up':'chevron-down'} size={18} color={C.mocha}/>
+            </View>
+          </TouchableOpacity>
+          {showRead&&<View style={s.compactList}>
+            {read.map(item=>renderAlert(item,true))}
+          </View>}
+        </View>}
+      </>}
       <Text style={s.foot}>Alertas de cancelamento aparecem quando a própria cliente cancela.
         Alertas críticos do sistema representam falhas reais no envio de notificações.</Text>
     </ScrollView>
@@ -208,5 +258,30 @@ const s=StyleSheet.create({
  whiteLabel:{color:C.white,fontSize:12,fontWeight:'700'},
  secondaryLabel:{color:C.mocha,fontSize:12,fontWeight:'700'},
  rejectConfirm:{backgroundColor:C.redBg,padding:13,borderRadius:11,marginTop:14},
+ sectionHeading:{marginTop:12,marginBottom:13},
+ sectionTitleRow:{flexDirection:'row',alignItems:'center',gap:9},
+ unreadCountPill:{borderRadius:11,backgroundColor:C.mocha,paddingHorizontal:9,
+  paddingVertical:4,alignItems:'center',minWidth:25},
+ unreadCountText:{color:C.white,fontSize:11,fontWeight:'700'},
+ allCaughtUp:{backgroundColor:C.white,borderRadius:12,borderWidth:1,
+  borderColor:C.border,padding:17,flexDirection:'row',alignItems:'center',gap:10},
+ caughtUpText:{color:C.muted,fontSize:12,flex:1,lineHeight:19},
+ readSection:{marginTop:20,padding:14,borderRadius:14,
+  backgroundColor:'#F4EFEA',borderWidth:1,borderColor:C.border},
+ readToggle:{flexDirection:'row',justifyContent:'space-between',
+  alignItems:'center',gap:9,minHeight:30},
+ readHeading:{fontWeight:'700',fontSize:15,color:C.muted},
+ readCountPill:{paddingHorizontal:8,paddingVertical:3,
+  backgroundColor:C.white,borderRadius:11},
+ readCountText:{fontWeight:'700',fontSize:11,color:C.mocha},
+ toggleAction:{flexDirection:'row',alignItems:'center',gap:5},
+ toggleText:{fontSize:12,fontWeight:'700',color:C.mocha},
+ compactList:{marginTop:13,gap:8},
+ compactCard:{backgroundColor:C.white,padding:12,borderRadius:11,
+  borderWidth:1,borderColor:C.border,flexDirection:'row',alignItems:'center',gap:11},
+ compactIcon:{width:36,height:36,borderRadius:18,
+  backgroundColor:C.soft,justifyContent:'center',alignItems:'center'},
+ compactTitle:{fontSize:13,fontWeight:'600',color:C.muted,lineHeight:19},
+ compactDate:{fontSize:11,color:C.muted,marginTop:4},
  foot:{fontSize:11,color:C.muted,lineHeight:18,marginTop:16},
 });
