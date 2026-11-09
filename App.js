@@ -29,6 +29,7 @@ import PortfolioScreen from './PortfolioScreen';
 import FinancialDashboard from './FinancialDashboard';
 import ClientAppointments from './ClientAppointments';
 import ClientNotifications from './ClientNotifications';
+import AdminNotifications from './AdminNotifications';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48 - 16) / 2;
@@ -112,6 +113,11 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [notificationsLoading, setNotificationsLoading] = useState(!!user);
   const [notificationsError, setNotificationsError] = useState('');
   const [notificationActionSaving, setNotificationActionSaving] = useState(false);
+  const [adminNotifications, setAdminNotifications] = useState([]);
+  const [unreadAdminCount, setUnreadAdminCount] = useState(0);
+  const [adminNotificationLoading, setAdminNotificationLoading] = useState(!!isAdmin);
+  const [adminNotificationError, setAdminNotificationError] = useState('');
+  const [adminNotificationBusy, setAdminNotificationBusy] = useState(null);
   const displayName = (
     homeName.trim() ||
     user?.user_metadata?.full_name ||
@@ -195,6 +201,89 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     } catch (e) {
       setNotificationsError('Não foi possível atualizar os avisos: ' + (e?.message || 'erro desconhecido'));
     } finally { setNotificationActionSaving(false); }
+  }
+
+  const loadAdminNotifications = useCallback(async () => {
+    if (!isAdmin || !user?.id) return;
+    try {
+      const [list, count] = await Promise.all([
+        supabase.from('admin_notifications')
+          .select('id,recipient_id,appointment_id,type,priority,title,body,read_at,resolved_at,created_at,appointments(id,starts_at,status,price_at_booking,points_redeemed,notes,services(name,duration_minutes),profiles(full_name,phone))')
+          .eq('recipient_id',user.id).order('created_at',{ascending:false}).limit(150),
+        supabase.from('admin_notifications')
+          .select('id',{count:'exact',head:true})
+          .eq('recipient_id',user.id).is('read_at',null),
+      ]);
+      if(list.error)throw list.error;
+      if(count.error)throw count.error;
+      setAdminNotifications(list.data||[]);
+      setUnreadAdminCount(count.count||0);
+      setAdminNotificationError('');
+    }catch(e){
+      setAdminNotificationError('Não foi possível consultar os alertas: '+(e?.message||'erro desconhecido'));
+    }finally{setAdminNotificationLoading(false);}
+  },[user?.id,isAdmin]);
+
+  useEffect(()=>{
+    if(!isAdmin||!user?.id){
+      setAdminNotifications([]);setUnreadAdminCount(0);
+      setAdminNotificationLoading(false);
+      return;
+    }
+    loadAdminNotifications();
+    const channel=supabase.channel('admin-operational-alerts-'+user.id)
+      .on('postgres_changes',{
+        event:'*',schema:'public',table:'admin_notifications',
+        filter:'recipient_id=eq.'+user.id,
+      },()=>loadAdminNotifications()).subscribe();
+    const poll=setInterval(loadAdminNotifications,30000);
+    return ()=>{
+      clearInterval(poll);
+      supabase.removeChannel(channel);
+    };
+  },[isAdmin,user?.id,loadAdminNotifications]);
+
+  useEffect(()=>{
+    if(isAdmin&&user?.id&&(currentScreen==='Notifications'||currentScreen==='Home'||currentScreen==='Admin'))
+      loadAdminNotifications();
+  },[currentScreen,isAdmin,user?.id,loadAdminNotifications]);
+
+  async function markAdminNotificationRead(id=null){
+    if(!isAdmin||!user?.id)return;
+    try{
+      let query=supabase.from('admin_notifications')
+        .update({read_at:new Date().toISOString()})
+        .eq('recipient_id',user.id).is('read_at',null);
+      if(id)query=query.eq('id',id);
+      const {error}=await query;
+      if(error)throw error;
+      await loadAdminNotifications();
+    }catch(e){
+      setAdminNotificationError('Não foi possível marcar como lido: '+(e?.message||'erro desconhecido'));
+    }
+  }
+
+  async function decideAdminNotification(item,nextStatus){
+    if(!isAdmin||!user?.id||adminNotificationBusy)throw new Error('Ação indisponível.');
+    if(item.type!=='booking_requested'||!item.appointment_id||
+      !['confirmed','cancelled'].includes(nextStatus))
+      throw new Error('Esta notificação não permite essa ação.');
+    setAdminNotificationBusy(item.id);
+    try{
+      const {data,error}=await supabase.from('appointments')
+        .update({status:nextStatus})
+        .eq('id',item.appointment_id)
+        .eq('status','pending')
+        .select('id,status')
+        .maybeSingle();
+      if(error)throw error;
+      if(!data)throw new Error('Este pedido já foi respondido ou alterado por outra pessoa. Atualize os alertas.');
+      await markAdminNotificationRead(item.id);
+      await loadAppointments();
+    }finally{
+      setAdminNotificationBusy(null);
+      await loadAdminNotifications();
+    }
   }
 
   useEffect(() => {
@@ -479,10 +568,11 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             'Entre na sua conta para ver notificações'}
           onPress={() => user ? setCurrentScreen('Notifications') : onRequestAuth('Home')}>
           <Ionicons name="notifications-outline" size={29} color={colors.ink}/>
-          {user && unreadNotifications > 0 && (
+          {user && (isAdmin ? unreadAdminCount : unreadNotifications) > 0 && (
             <View style={styles.homeBellBadge}>
               <Text style={styles.homeBellBadgeText}>
-                {unreadNotifications > 9 ? '9+' : String(unreadNotifications)}
+                {(isAdmin ? unreadAdminCount : unreadNotifications) > 9 ? '9+' :
+                  String(isAdmin ? unreadAdminCount : unreadNotifications)}
               </Text>
             </View>
           )}
@@ -741,6 +831,16 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       <View style={{ marginBottom: 20, marginTop: 10 }}>
         <Text style={styles.greeting}>Painel Admin 👩‍💻</Text>
         <Text style={styles.subtitle}>Agenda, clientes, serviços e indicadores do estúdio</Text>
+        <TouchableOpacity accessibilityRole="button"
+          onPress={() => setCurrentScreen('Notifications')}
+          style={[styles.guestCardButton,{alignSelf:'flex-start',marginTop:13}]}>
+          <Ionicons name="notifications-outline" size={19} color={colors.mocha}/>
+          <Text style={styles.guestCardButtonText}>Central de Controle</Text>
+          {unreadAdminCount > 0 &&
+            <Text style={[styles.guestCardButtonText,{color:'#AD3441'}]}>
+              {unreadAdminCount} novo{unreadAdminCount===1?'':'s'}
+            </Text>}
+        </TouchableOpacity>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         style={{ marginBottom: 21 }}
@@ -868,7 +968,19 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             ))
           : GuestBookingScreen())}
         {currentScreen === 'Portfolio' && <PortfolioScreen services={services} />}
-        {currentScreen === 'Notifications' && user && <ClientNotifications
+        {currentScreen === 'Notifications' && user && isAdmin && <AdminNotifications
+          items={adminNotifications}
+          unreadCount={unreadAdminCount}
+          loading={adminNotificationLoading}
+          error={adminNotificationError}
+          busyId={adminNotificationBusy}
+          onBack={() => setCurrentScreen('Admin')}
+          onRefresh={loadAdminNotifications}
+          onMarkRead={markAdminNotificationRead}
+          onMarkAll={() => markAdminNotificationRead()}
+          onDecide={decideAdminNotification}
+        />}
+        {currentScreen === 'Notifications' && user && !isAdmin && <ClientNotifications
           items={notifications}
           unreadCount={unreadNotifications}
           loading={notificationsLoading}
