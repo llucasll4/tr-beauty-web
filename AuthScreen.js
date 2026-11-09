@@ -48,6 +48,10 @@ export default function AuthScreen({
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmationEmail,setConfirmationEmail]=useState('');
+  const [confirmationCode,setConfirmationCode]=useState('');
+  const [resendBusy,setResendBusy]=useState(false);
+  const [resendAfter,setResendAfter]=useState(0);
 
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -63,6 +67,7 @@ export default function AuthScreen({
   function switchMode(next) {
     setMode(next);
     setPassword('');
+    setConfirmationCode('');
     notify('');
   }
 
@@ -129,10 +134,11 @@ export default function AuthScreen({
         if (error) throw error;
 
         if (!data.session) {
-          notify(
-            'Cadastro recebido! Confira seu e-mail ' +
-              'para confirmar a conta.'
-          );
+          setConfirmationEmail(normalizedEmail);
+          setConfirmationCode('');
+          setResendAfter(Date.now()+60000);
+          setMode('verifyEmail');
+          notify('Cadastro recebido! Digite o código enviado para ' + normalizedEmail + '.');
         } else {
           notify('Conta criada com sucesso!');
         }
@@ -146,6 +152,33 @@ export default function AuthScreen({
         if (error) throw error;
       }
     });
+
+  // Confirmar conta pelo código enviado no modelo "Confirm sign up".
+  const verifySignupCode = () => run(async () => {
+    const target=(confirmationEmail||email).trim().toLowerCase();
+    const token=confirmationCode.replace(/\D/g,'');
+    if(!target||!/^\d{6,8}$/.test(token))throw new Error('Digite seu e-mail e um código numérico de 6 a 8 dígitos.');
+    const {error}=await supabase.auth.verifyOtp({email:target,token,type:'email'});
+    if(error)throw new Error('Código inválido ou expirado. Confira o código ou solicite outro.');
+    setConfirmationCode('');
+    notify('E-mail confirmado com sucesso!');
+    // A sessão iniciada pelo Supabase abre o aplicativo automaticamente.
+  });
+  const resendSignupCode = async () => {
+    if(busy||resendBusy)return;
+    const target=(confirmationEmail||email).trim().toLowerCase();
+    if(!target){notify('Informe o e-mail do cadastro.',true);return;}
+    if(Date.now()<resendAfter){notify('Aguarde um minuto antes de reenviar.',true);return;}
+    setResendBusy(true);notify('');
+    try{
+      const {error}=await supabase.auth.resend({type:'signup',email:target});
+      if(error)throw error;
+      setConfirmationEmail(target);setConfirmationCode('');
+      setResendAfter(Date.now()+60000);
+      notify('Se a conta estiver aguardando confirmação, enviaremos um novo código para '+target+'.');
+    }catch(err){notify('Falha no reenvio: '+(err?.message||'tente novamente.'),true);}
+    finally{setResendBusy(false);}
+  };
 
   // RECUPERAÇÃO DE SENHA
   const resetPassword = () =>
@@ -275,6 +308,8 @@ export default function AuthScreen({
             ? 'Crie sua conta e agende seus cuidados'
             : mode === 'reset'
             ? 'Recuperar acesso'
+            : mode === 'verifyEmail'
+            ? 'Confirme sua conta com o código recebido'
             : mode === 'newPassword'
             ? 'Escolha uma nova senha'
             : 'Bem-vinda ao seu espaço de beleza'}
@@ -340,6 +375,22 @@ export default function AuthScreen({
           </>
         )}
 
+        {/* CÓDIGO DE VERIFICAÇÃO DO NOVO CADASTRO */}
+        {mode === 'verifyEmail' && <>
+          <Text style={s.label}>E-mail do cadastro</Text>
+          <TextInput style={s.input} value={confirmationEmail}
+            onChangeText={v=>setConfirmationEmail(v.trim().toLowerCase())}
+            keyboardType="email-address" autoCapitalize="none" autoComplete="email"
+            placeholder="seuemail@exemplo.com" editable={!busy&&!resendBusy}/>
+          <Text style={s.label}>Código de confirmação</Text>
+          <TextInput style={[s.input,s.codeInput]} value={confirmationCode}
+            onChangeText={v=>setConfirmationCode(v.replace(/\D/g,'').slice(0,8))}
+            keyboardType="number-pad" textContentType="oneTimeCode" autoComplete="one-time-code"
+            placeholder="Digite o código" maxLength={8}
+            accessibilityLabel="Código de confirmação do cadastro"/>
+          <Text style={s.codeHint}>Digite o código enviado ao e-mail. Não compartilhe esse código com ninguém.</Text>
+        </>}
+
         {/* NOVA SENHA */}
         {mode === 'newPassword' && (
           <>
@@ -388,13 +439,11 @@ export default function AuthScreen({
               onPress={authEmail}
             />
 
-            <Btn
-              title="Criar minha conta"
-              outline
-              onPress={() =>
-                switchMode('signup')
-              }
-            />
+            <Btn title="Criar minha conta" outline onPress={()=>switchMode('signup')}/>
+            <TouchableOpacity style={s.link} accessibilityRole="button"
+              onPress={()=>{setConfirmationEmail(email.trim().toLowerCase());switchMode('verifyEmail');}}>
+              <Text style={s.linkText}>Já tenho um código de confirmação</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() =>
@@ -437,6 +486,15 @@ export default function AuthScreen({
             />
           </>
         )}
+
+        {mode === 'verifyEmail' && <>
+          <Btn title="Confirmar meu e-mail" icon="shield-checkmark-outline" onPress={verifySignupCode}/>
+          <TouchableOpacity style={s.link} accessibilityRole="button" disabled={busy||resendBusy}
+            onPress={resendSignupCode}>
+            <Text style={s.linkText}>{resendBusy?'Reenviando...':'Não recebi o código — reenviar'}</Text>
+          </TouchableOpacity>
+          <Btn title="Voltar ao login" outline onPress={()=>switchMode('login')}/>
+        </>}
 
         {/* TELA DE RECUPERAÇÃO */}
         {mode === 'reset' && (
@@ -585,6 +643,8 @@ const s = StyleSheet.create({
 
   backToSite: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', paddingVertical: 15, marginTop: 14 },
   backToSiteText: { fontSize: 13, fontWeight: '700', color: C.mocha },
+  codeInput:{textAlign:'center',fontSize:24,letterSpacing:5,fontWeight:'700'},
+  codeHint:{fontSize:12,lineHeight:19,color:C.muted,marginBottom:18,textAlign:'center'},
   foot: {
     textAlign: 'center',
     color: C.muted,
