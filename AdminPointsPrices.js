@@ -19,8 +19,8 @@ export default function AdminPointsPrices({services=[],onSaved=()=>{}}) {
     if(saving)return;
     const raw=String(draft[service.id]??'').trim();
     const value=Number(raw);
-    if(!/^\d+$/.test(raw)||!Number.isSafeInteger(value)||value<100){
-      setError('Informe um número inteiro de pelo menos 100 pontos.');
+    if(!/^\d+$/.test(raw)||!Number.isSafeInteger(value)||value<1){
+      setError('Informe um número inteiro de pelo menos 1 ponto.');
       setMessage('');
       return;
     }
@@ -46,7 +46,7 @@ export default function AdminPointsPrices({services=[],onSaved=()=>{}}) {
         <Text style={s.note}>Defina exatamente quantos pontos cada serviço custa.</Text>
       </View>
     </View>
-    <Text style={s.note}>Base inicial: serviço mais barato por 300 pontos, com acréscimo de 100 pontos conforme o preço. Você pode ajustar cada valor livremente (mínimo: 100).</Text>
+    <Text style={s.note}>Base inicial: serviço mais barato por 300 pontos, com acréscimo de 100 pontos conforme o preço. Você pode ajustar cada valor livremente (mínimo: 1).</Text>
     {!!message&&<Text style={s.success}>{message}</Text>}
     {!!error&&<Text style={s.error}>{error}</Text>}
     {!sorted.length&&<Text style={s.note}>Nenhum serviço cadastrado.</Text>}
