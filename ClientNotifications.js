@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
@@ -43,6 +43,63 @@ export default function ClientNotifications({
   onMarkAll,
   onOpenBookings,
 }) {
+  const [showRead, setShowRead] = useState(false);
+  const [expandedRead, setExpandedRead] = useState(null);
+  const { unread, read } = useMemo(() => {
+    const sorted = [...items].sort((a, b) =>
+      new Date(b.visible_at || b.created_at).getTime() -
+      new Date(a.visible_at || a.created_at).getTime());
+    return {
+      unread: sorted.filter(item => !item.read_at),
+      read: sorted.filter(item => !!item.read_at),
+    };
+  }, [items]);
+
+  const renderUnread = item => (
+    <TouchableOpacity key={item.id} style={[s.notice, s.noticeUnread]}
+      onPress={() => onMarkRead(item.id)} disabled={updating}
+      accessibilityRole="button" accessibilityLabel={item.title + ', não lida. Marcar como lida'}>
+      <View style={[s.noticeIcon, item.type === 'booking_cancelled' && s.cancelIcon]}>
+        <Ionicons name={iconTypes[item.type] || 'notifications-outline'} size={23}
+          color={item.type === 'booking_cancelled' ? C.red : C.mocha}/>
+      </View>
+      <View style={{ flex: 1 }}>
+        <View style={s.noticeTitleRow}>
+          <Text style={s.noticeTitle}>{item.title}</Text>
+          <View style={s.dot}/>
+        </View>
+        <Text style={s.noticeBody}>{item.body}</Text>
+        <Text style={s.noticeDate}>{dateLabel(item.visible_at || item.created_at)}</Text>
+        <Text style={s.readAction}>Toque para marcar como lida</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderRead = item => {
+    const expanded = expandedRead === item.id;
+    return (
+      <View key={item.id} style={s.readCard}>
+        <TouchableOpacity accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          accessibilityLabel={(expanded ? 'Recolher' : 'Ver') + ' detalhes de ' + item.title}
+          onPress={() => setExpandedRead(expanded ? null : item.id)}
+          style={s.readRow}>
+          <View style={s.readIcon}>
+            <Ionicons name={iconTypes[item.type] || 'notifications-outline'}
+              size={19} color={C.mocha}/>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.readTitle} numberOfLines={expanded ? 3 : 1}>{item.title}</Text>
+            <Text style={s.readDate}>{dateLabel(item.visible_at || item.created_at)}</Text>
+          </View>
+          <Ionicons name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+            size={19} color={C.muted}/>
+        </TouchableOpacity>
+        {expanded && <Text style={s.readBody}>{item.body}</Text>}
+      </View>
+    );
+  };
+
   return (
     <View style={s.root}>
       <View style={s.header}>
@@ -96,27 +153,47 @@ export default function ClientNotifications({
             </Text>
           </View>
         )}
-        {!loading && items.map(item => {
-          const unread = !item.read_at;
-          return (
-            <TouchableOpacity key={item.id} style={[s.notice, unread && s.noticeUnread]}
-              onPress={() => unread && onMarkRead(item.id)} accessibilityRole="button"
-              accessibilityLabel={item.title + (unread ? ', não lida' : ', lida')}>
-              <View style={[s.noticeIcon, item.type === 'booking_cancelled' && s.cancelIcon]}>
-                <Ionicons name={iconTypes[item.type] || 'notifications-outline'}
-                  size={23} color={item.type === 'booking_cancelled' ? C.red : C.mocha}/>
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={s.noticeTitleRow}>
-                  <Text style={s.noticeTitle}>{item.title}</Text>
-                  {unread && <View style={s.dot}/>}
+        {!loading && !error && items.length > 0 && (
+          <>
+            <View style={s.sectionBar}>
+              <View style={s.sectionLabel}>
+                <Ionicons name="mail-unread-outline" size={19} color={C.mocha}/>
+                <Text style={s.sectionTitle}>Não lidas</Text>
+                <View style={s.countPill}>
+                  <Text style={s.countText}>{unreadCount}</Text>
                 </View>
-                <Text style={s.noticeBody}>{item.body}</Text>
-                <Text style={s.noticeDate}>{dateLabel(item.visible_at || item.created_at)}</Text>
               </View>
-            </TouchableOpacity>
-          );
-        })}
+            </View>
+            {unread.length > 0 ? unread.map(renderUnread) : (
+              <View style={s.allReadState}>
+                <Ionicons name="checkmark-circle-outline" size={22} color={C.green}/>
+                <Text style={s.allReadText}>Tudo em dia! Nenhuma mensagem não lida.</Text>
+              </View>
+            )}
+            {read.length > 0 && (
+              <View style={s.readSection}>
+                <TouchableOpacity style={s.readSectionToggle} accessibilityRole="button"
+                  accessibilityState={{ expanded: showRead }}
+                  accessibilityLabel={(showRead ? 'Ocultar' : 'Mostrar') + ' notificações lidas'}
+                  onPress={() => setShowRead(value => !value)}>
+                  <View style={s.sectionLabel}>
+                    <Ionicons name="checkmark-done-outline" size={19} color={C.muted}/>
+                    <Text style={s.readSectionTitle}>Lidas</Text>
+                    <View style={s.readCountPill}>
+                      <Text style={s.readCountText}>{read.length}</Text>
+                    </View>
+                  </View>
+                  <View style={s.toggleRight}>
+                    <Text style={s.toggleText}>{showRead ? 'Ocultar' : 'Mostrar'}</Text>
+                    <Ionicons name={showRead ? 'chevron-up' : 'chevron-down'}
+                      color={C.mocha} size={18}/>
+                  </View>
+                </TouchableOpacity>
+                {showRead && <View style={s.readList}>{read.map(renderRead)}</View>}
+              </View>
+            )}
+          </>
+        )}
         {!loading && (
           <TouchableOpacity style={s.bookingsLink} onPress={onOpenBookings}
             accessibilityRole="button">
@@ -179,5 +256,36 @@ const s = StyleSheet.create({
   bookingsLink: { flexDirection: 'row', alignItems: 'center', gap: 11,
     borderRadius: 13, backgroundColor: C.nude, padding: 15, marginTop: 16 },
   bookingsText: { flex: 1, color: C.mocha, fontWeight: '700', fontSize: 13 },
+  sectionBar: { marginTop: 7, marginBottom: 14 },
+  sectionLabel: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  sectionTitle: { color: C.ink, fontSize: 16, fontWeight: '700' },
+  countPill: { backgroundColor: C.mocha, paddingHorizontal: 9, paddingVertical: 4,
+    borderRadius: 12, minWidth: 26, alignItems: 'center' },
+  countText: { color: C.white, fontSize: 11, fontWeight: '700' },
+  allReadState: { flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: C.white, padding: 16, borderRadius: 13, marginBottom: 12,
+    borderWidth: 1, borderColor: C.border },
+  allReadText: { color: C.muted, fontSize: 13, flex: 1, lineHeight: 19 },
+  readAction: { color: C.mocha, fontWeight: '600', fontSize: 11, marginTop: 12 },
+  readSection: { marginTop: 17, backgroundColor: '#F5F0EB',
+    borderRadius: 15, padding: 14, borderWidth: 1, borderColor: C.border },
+  readSectionToggle: { flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', gap: 10, minHeight: 30 },
+  readSectionTitle: { color: C.muted, fontSize: 15, fontWeight: '700' },
+  readCountPill: { borderRadius: 10, backgroundColor: C.white,
+    paddingHorizontal: 8, paddingVertical: 3 },
+  readCountText: { fontSize: 11, color: C.mocha, fontWeight: '700' },
+  toggleRight: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  toggleText: { fontSize: 12, color: C.mocha, fontWeight: '700' },
+  readList: { marginTop: 14, gap: 8 },
+  readCard: { backgroundColor: C.white, borderWidth: 1, borderColor: C.border,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 11 },
+  readRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  readIcon: { height: 35, width: 35, borderRadius: 18, backgroundColor: C.nude,
+    alignItems: 'center', justifyContent: 'center' },
+  readTitle: { fontSize: 13, fontWeight: '600', color: C.muted, lineHeight: 18 },
+  readDate: { fontSize: 11, color: C.muted, marginTop: 4 },
+  readBody: { fontSize: 12, color: C.muted, lineHeight: 19, marginTop: 10,
+    paddingTop: 10, borderTopWidth: 1, borderTopColor: C.border },
   footnote: { marginTop: 20, fontSize: 11, color: C.muted, lineHeight: 18 },
 });
