@@ -22,13 +22,14 @@ Exigir celular brasileiro com DDD ao criar nova conta de cliente. Não exige, n�
 - Clientes existentes sem celular **continuam com a mesma conta, histórico de reservas e pontos**.
 - No próximo login, uma tela de **Completar cadastro** exige o celular antes de abrir o app.
 - No primeiro login via Google, a pessoa também deve completar seu telefone antes de usar o app, porque a Meta/Google não garante telefone no cadastro OAuth.
-- Contas **Admin** existentes não são obrigadas a preencher celular para acessar o painel.
+- Contas **Admin** existentes não são obrigadas a preencher celular para acessar o painel e mantêm a edição de telefone de contato anterior.
 - A tela de Perfil de cliente exige celular válido em alterações futuras, com a mesma máscara.
 
 ## Migrações
 **Já aplicadas ao Supabase de produção — não reaplicar**:
 - `supabase/migrations/20261109_required_signup_phone.sql`
 - `supabase/migrations/20261109_restrict_handle_new_user_execute.sql`
+- `supabase/migrations/20261109_admin_phone_compatibility.sql`
 
 ## Testes técnicos (revertidos com ROLLBACK)
 - [x] Sem DDD, sem o nono dígito, DDD inexistente e campo vazio foram rejeitados.
