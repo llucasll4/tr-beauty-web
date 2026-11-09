@@ -48,15 +48,14 @@ const colors = {
   border: '#EBE5DF',
 };
 
-const greetingClock = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false,
-});
-function greetingForTime(timestamp) {
-  const hour = Number(greetingClock.format(new Date(timestamp)));
-  if (hour >= 5 && hour < 12) return 'Bom dia';
-  if (hour >= 12 && hour < 18) return 'Boa tarde';
-  return 'Boa noite';
-}
+// Ícones neutros da marca para os cards de serviços cadastrados.
+const iconForHomeService = (name = '') => {
+  const label = name.toLocaleLowerCase('pt-BR');
+  if (label.includes('manuten')) return 'construct-outline';
+  if (label.includes('nail art') || label.includes('decora') || label.includes('arte')) return 'color-palette-outline';
+  if (label.includes('gel') || label.includes('banho')) return 'water-outline';
+  return 'sparkles-outline';
+};
 const brazilClock = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
 const brazilDate = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
 function localDateKey(date) {
@@ -112,7 +111,6 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   },[isAdmin,currentScreen]);
   const [homeAvatar, setHomeAvatar] = useState(null);
   const [homeName, setHomeName] = useState('');
-  const [currentTimestamp, setCurrentTimestamp] = useState(Date.now());
   const [notifications, setNotifications] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(!!user);
@@ -129,11 +127,6 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     user?.user_metadata?.name ||
     (user ? 'Cliente' : 'Visitante')
   ).trim().split(/\s+/)[0];
-  useEffect(() => {
-    const id = setInterval(() => setCurrentTimestamp(Date.now()), 60000);
-    return () => clearInterval(id);
-  }, []);
-
   const loadNotifications = useCallback(async () => {
     if (!user?.id) return;
     const cutoff = new Date().toISOString();
@@ -355,6 +348,32 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [services, setServices] = useState([]);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [serviceError, setServiceError] = useState('');
+  const [homeInspirations, setHomeInspirations] = useState([]);
+  const [homeInspirationsLoading, setHomeInspirationsLoading] = useState(false);
+  const [homeInspirationsError, setHomeInspirationsError] = useState('');
+
+  // Utiliza o mesmo portfólio público da galeria, sem fotos de exemplo nem dados fictícios.
+  useEffect(() => {
+    if (currentScreen !== 'Home' || isAdmin) return;
+    let active = true;
+    setHomeInspirationsLoading(true);
+    setHomeInspirationsError('');
+    supabase.from('portfolio_photos')
+      .select('id,title,image_path')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(12)
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) throw error;
+        setHomeInspirations((data || []).filter(photo => !!photo.image_path));
+      })
+      .catch(error => {
+        if (active) setHomeInspirationsError('Não foi possível carregar as inspirações.');
+      })
+      .finally(() => { if (active) setHomeInspirationsLoading(false); });
+    return () => { active = false; };
+  }, [currentScreen, isAdmin]);
   const [savingService, setSavingService] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [showServiceForm, setShowServiceForm] = useState(false);
@@ -577,9 +596,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             : <Ionicons name="person-outline" size={29} color={colors.mocha}/>}
         </TouchableOpacity>
         <View style={styles.greetingTextBlock}>
-          <Text style={styles.greetingDay}>{greetingForTime(currentTimestamp)} 💅🌟</Text>
           <Text style={styles.greetingFullName} numberOfLines={1}
-            adjustsFontSizeToFit>{displayName}</Text>
+            adjustsFontSizeToFit>Olá, {displayName}!</Text>
         </View>
         <TouchableOpacity style={styles.homeBellButton} accessibilityRole="button"
           accessibilityLabel={user ? 'Abrir notificações' :
@@ -612,12 +630,6 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         </View>
       ) : user ? <View>
         <LoyaltyCard onOpenDetails={() => setCurrentScreen('Points')} />
-        <TouchableOpacity accessibilityRole="button" onPress={() => setCurrentScreen('NailBook')}
-          style={[styles.guestCardButton,{justifyContent:'center',marginVertical:15}]}>
-          <Ionicons name="images-outline" size={20} color={colors.mocha}/>
-          <Text style={styles.guestCardButtonText}>Meu Nail Book 💅</Text>
-          <Ionicons name="arrow-forward-outline" size={16} color={colors.mocha}/>
-        </TouchableOpacity>
       </View> : (
         <View style={styles.guestCard}>
           <View style={styles.guestCardHeader}>
@@ -633,29 +645,107 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         </View>
       )}
 
-      <TouchableOpacity style={styles.primaryButton}
-        onPress={() => { if (isAdmin) { setAdminSection('manual'); setCurrentScreen('Admin'); } else { setBookingStartStep(1);setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } } }}>
-        <Text style={styles.primaryButtonText}>{isAdmin ? 'Agendar cliente' : 'Agendar Meu Horário'}</Text>
+      {isAdmin && <TouchableOpacity style={styles.primaryButton}
+        onPress={() => { setAdminSection('manual'); setCurrentScreen('Admin'); }}>
+        <Text style={styles.primaryButtonText}>Agendar cliente</Text>
         <Ionicons name="calendar-outline" size={20} color={colors.background} />
-      </TouchableOpacity>
+      </TouchableOpacity>}
 
-      <Text style={styles.sectionTitle}>Serviços disponíveis</Text>
+      <View style={styles.homeSectionHeading}>
+        <View style={styles.homeSectionLabel}>
+          <Text style={styles.homeSectionTitle}>Serviços</Text>
+          <View style={styles.homeSectionAccent}/>
+        </View>
+        {!isAdmin && activeServices.length > 4 && (
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Ver todos os serviços"
+            style={styles.homeSectionLink}
+            onPress={() => { setBookingStartStep(1); setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } }}>
+            <Text style={styles.homeSectionLinkText}>Ver todos</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.mocha}/>
+          </TouchableOpacity>
+        )}
+      </View>
       {servicesLoading && <ActivityIndicator color={colors.mocha} />}
       {!!serviceError && !isAdmin && <Text style={styles.loginError}>{serviceError}</Text>}
       {!servicesLoading && activeServices.length === 0 && (
         <Text style={styles.subtitle}>Nenhum serviço disponível por enquanto.</Text>
       )}
-      <View style={styles.servicesGrid}>
-        {activeServices.map((service) => (
-          <View key={service.id} style={styles.simpleServiceCard}>
-            <Text style={styles.serviceTitle}>{service.name}</Text>
-            <Text style={styles.serviceDetails}>
-              {service.duration_minutes} min • {money(service.price)}
+      <View style={styles.homeServicesGrid}>
+        {activeServices.slice(0, 4).map(service => (
+          <TouchableOpacity key={service.id} style={styles.homeServiceCard}
+            disabled={isAdmin} accessibilityRole="button"
+            accessibilityLabel={service.name + ', ' + money(service.price) + ', ' + service.duration_minutes + ' minutos'}
+            onPress={() => {
+              setSelectedServiceId(service.id);
+              setSelectedTime(null);
+              setPaymentMethod('cash');
+              setBookingStartStep(2);
+              setBookingSuccess('');
+              if (user) setBookingView('new');
+              setCurrentScreen('Booking');
+            }}>
+            <Ionicons name={iconForHomeService(service.name)} size={27} color={colors.mocha}/>
+            <Text style={styles.homeServiceName} numberOfLines={2}>{service.name}</Text>
+            <Text style={styles.homeServiceMeta}>
+              {money(service.price)} · {service.duration_minutes} min
             </Text>
-            {!!service.description && <Text style={styles.subtitle}>{service.description}</Text>}
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
+
+      {!isAdmin && (
+        <View style={styles.homeInspirationsSection}>
+          <View style={styles.homeSectionHeading}>
+            <View style={styles.homeSectionLabel}>
+              <Text style={styles.homeSectionTitle}>Inspirações</Text>
+              <View style={styles.homeSectionAccent}/>
+            </View>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Ver todas as inspirações"
+              style={styles.homeSectionLink} onPress={() => setCurrentScreen('Portfolio')}>
+              <Text style={styles.homeSectionLinkText}>Ver todas</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.mocha}/>
+            </TouchableOpacity>
+          </View>
+          {homeInspirationsLoading && <ActivityIndicator color={colors.mocha}/>}
+          {!!homeInspirationsError && (
+            <Text style={styles.homeGalleryMessage}>{homeInspirationsError}</Text>
+          )}
+          {!homeInspirationsLoading && !homeInspirationsError && homeInspirations.length === 0 && (
+            <Text style={styles.homeGalleryMessage}>Novas inspirações chegarão em breve.</Text>
+          )}
+          {homeInspirations.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.homeInspirationCarousel}
+              accessibilityLabel="Carrossel de inspirações do estúdio">
+              {homeInspirations.map(photo => (
+                <TouchableOpacity key={photo.id} style={styles.homeInspirationCard}
+                  accessibilityRole="button" accessibilityLabel={'Abrir galeria: ' + photo.title}
+                  onPress={() => setCurrentScreen('Portfolio')}>
+                  <Image style={styles.homeInspirationImage} resizeMode="cover"
+                    source={{ uri: supabase.storage.from('portfolio').getPublicUrl(photo.image_path).data.publicUrl }}/>
+                  <Text numberOfLines={1} style={styles.homeInspirationName}>{photo.title}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      )}
+
+      {!isAdmin && <TouchableOpacity style={styles.primaryButton}
+        accessibilityRole="button"
+        onPress={() => { setBookingStartStep(1); setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } }}>
+        <Text style={styles.primaryButtonText}>Agendar Meu Horário</Text>
+        <Ionicons name="calendar-outline" size={20} color={colors.background}/>
+      </TouchableOpacity>}
+
+      {user && !isAdmin && (
+        <TouchableOpacity accessibilityRole="button" onPress={() => setCurrentScreen('NailBook')}
+          style={[styles.guestCardButton, styles.homeNailBookButton]}>
+          <Ionicons name="images-outline" size={20} color={colors.mocha}/>
+          <Text style={styles.guestCardButtonText}>Meu Nail Book 💅</Text>
+          <Ionicons name="arrow-forward-outline" size={16} color={colors.mocha}/>
+        </TouchableOpacity>
+      )}
       {user && <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
         <Ionicons name="log-out-outline" size={18} color={colors.mocha} />
         <Text style={styles.logoutText}>Sair da conta</Text>
@@ -1147,6 +1237,29 @@ const styles = StyleSheet.create({
   primaryButton: { backgroundColor: colors.ink, flexDirection: 'row', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 32 },
   primaryButtonText: { color: colors.background, fontSize: 16, fontWeight: '600', marginRight: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: colors.ink, marginBottom: 16 },
+  homeSectionHeading: { flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 17, marginTop: 7 },
+  homeSectionLabel: { alignItems: 'flex-start' },
+  homeSectionTitle: { fontSize: 20, fontWeight: '700', color: colors.ink },
+  homeSectionAccent: { width: 38, height: 3, backgroundColor: colors.mocha, borderRadius: 3, marginTop: 7 },
+  homeSectionLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 3 },
+  homeSectionLinkText: { color: colors.mocha, fontSize: 13, fontWeight: '600' },
+  homeServicesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
+    rowGap: 12, marginBottom: 15 },
+  homeServiceCard: { width: '48%', minHeight: 124, backgroundColor: colors.white,
+    borderWidth: 1, borderColor: colors.border, borderRadius: 16,
+    padding: 15, justifyContent: 'space-between' },
+  homeServiceName: { color: colors.ink, fontSize: 15, fontWeight: '700', marginTop: 11 },
+  homeServiceMeta: { color: colors.mocha, fontSize: 12, marginTop: 5 },
+  homeInspirationsSection: { marginTop: 7, marginBottom: 23 },
+  homeInspirationCarousel: { gap: 12, paddingBottom: 2 },
+  homeInspirationCard: { width: 157, backgroundColor: colors.white,
+    borderRadius: 14, borderColor: colors.border, borderWidth: 1, overflow: 'hidden' },
+  homeInspirationImage: { width: '100%', height: 151, backgroundColor: colors.nude },
+  homeInspirationName: { paddingHorizontal: 10, paddingVertical: 10,
+    color: colors.ink, fontSize: 12, fontWeight: '600' },
+  homeGalleryMessage: { color: colors.mocha, fontSize: 13, paddingVertical: 14 },
+  homeNailBookButton: { justifyContent: 'center', marginTop: -13, marginBottom: 10 },
   servicesGrid: { gap: 12 },
   simpleServiceCard: { padding: 16, backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
   serviceTitle: { fontSize: 15, fontWeight: '600', color: colors.ink, marginBottom: 4 },
