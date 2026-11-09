@@ -4,6 +4,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -122,6 +123,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
+  const [bookingConfirmationVisible, setBookingConfirmationVisible] = useState(false);
   const [bookingSaving, setBookingSaving] = useState(false);
   const [appointments, setAppointments] = useState([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
@@ -268,10 +270,13 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         p_service_id: selectedServiceId, p_starts_at: selectedTime,
       });
       if (error) throw error;
-      setBookingSuccess('Pedido enviado! Acompanhe sua reserva na lista de próximos agendamentos.');
+      // Pedido recebido: não confundir envio com confirmação do estúdio.
+      setBookingSuccess('');
       setSelectedTime(null);
       setBookingView('hub');
       setMyAppointmentsRefresh(value => value + 1);
+      setCurrentScreen('Home');
+      setBookingConfirmationVisible(true);
       if (isAdmin) await loadAppointments();
     } catch (err) {
       setBookingError('Não foi possível reservar: ' + err.message);
@@ -667,6 +672,40 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           </TouchableOpacity>
         )}
       </View>
+      <Modal visible={bookingConfirmationVisible} transparent animationType="fade"
+        onRequestClose={() => setBookingConfirmationVisible(false)}>
+        <View style={styles.confirmationBackdrop}>
+          <View style={styles.confirmationCard} accessibilityRole="alert">
+            <View style={styles.confirmationIconCircle}>
+              <Ionicons name="checkmark-circle-outline" size={42} color="#247047" />
+            </View>
+            <Text style={styles.confirmationTitle}>Pedido de agendamento enviado!</Text>
+            <Text style={styles.confirmationMessage}>
+              Seu pedido foi registrado com sucesso e está aguardando a confirmação do estúdio.
+            </Text>
+            <Text style={styles.confirmationHint}>
+              Para acompanhar seus pedidos futuros e visualizar agendamentos anteriores,
+              acesse a aba Reservas.
+            </Text>
+            <TouchableOpacity accessibilityRole="button"
+              accessibilityLabel="Ver minhas reservas" style={styles.confirmationPrimaryButton}
+              onPress={() => {
+                setBookingConfirmationVisible(false);
+                setBookingView('hub');
+                setCurrentScreen('Booking');
+              }}>
+              <Ionicons name="calendar-outline" size={20} color={colors.white} />
+              <Text style={styles.confirmationPrimaryText}>Ver minhas reservas</Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button"
+              accessibilityLabel="Entendi, continuar na tela inicial"
+              style={styles.confirmationSecondaryButton}
+              onPress={() => setBookingConfirmationVisible(false)}>
+              <Text style={styles.confirmationSecondaryText}>Entendi, continuar no Início</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -849,6 +888,16 @@ const styles = StyleSheet.create({
   navTextActive: { color: colors.ink, fontWeight: 'bold' },
   adminAction: { color: colors.mocha, fontWeight: '700' },
   successText: { color: '#247047', fontWeight: '600' },
+  confirmationBackdrop: { flex: 1, backgroundColor: 'rgba(25, 25, 25, 0.58)', justifyContent: 'center', alignItems: 'center', padding: 22 },
+  confirmationCard: { width: '100%', maxWidth: 420, backgroundColor: colors.white, borderRadius: 22, paddingHorizontal: 24, paddingVertical: 29, alignItems: 'center' },
+  confirmationIconCircle: { width: 76, height: 76, backgroundColor: '#EAF6EF', borderRadius: 38, justifyContent: 'center', alignItems: 'center', marginBottom: 18 },
+  confirmationTitle: { color: colors.ink, fontSize: 21, fontWeight: '700', textAlign: 'center', marginBottom: 13 },
+  confirmationMessage: { color: colors.ink, fontSize: 15, textAlign: 'center', lineHeight: 23, marginBottom: 12 },
+  confirmationHint: { color: colors.mocha, fontSize: 14, textAlign: 'center', lineHeight: 21, marginBottom: 24 },
+  confirmationPrimaryButton: { backgroundColor: colors.ink, borderRadius: 12, paddingVertical: 15, paddingHorizontal: 16, flexDirection: 'row', gap: 10, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
+  confirmationPrimaryText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  confirmationSecondaryButton: { marginTop: 10, paddingVertical: 13, paddingHorizontal: 10 },
+  confirmationSecondaryText: { color: colors.mocha, fontWeight: '600', fontSize: 13 },
   logoutButton: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: 8, paddingVertical: 14, marginTop: 26 },
   logoutText: { color: colors.mocha, fontWeight: '600' },
   loadingPage: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
