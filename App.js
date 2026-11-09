@@ -29,6 +29,8 @@ import FinancialDashboard from './FinancialDashboard';
 import ClientAppointments from './ClientAppointments';
 import ClientNotifications from './ClientNotifications';
 import AdminNotifications from './AdminNotifications';
+import NailBook from './NailBook';
+import AdminWhatsApp from './AdminWhatsApp';
 import BookingWizard from './BookingWizard';
 
 const { width } = Dimensions.get('window');
@@ -605,7 +607,15 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             <Ionicons name="arrow-forward-outline" size={16} color={colors.mocha}/>
           </TouchableOpacity>
         </View>
-      ) : user ? <LoyaltyCard onOpenDetails={() => setCurrentScreen('Points')} /> : (
+      ) : user ? <View>
+        <LoyaltyCard onOpenDetails={() => setCurrentScreen('Points')} />
+        <TouchableOpacity accessibilityRole="button" onPress={() => setCurrentScreen('NailBook')}
+          style={[styles.guestCardButton,{justifyContent:'center',marginVertical:15}]}>
+          <Ionicons name="images-outline" size={20} color={colors.mocha}/>
+          <Text style={styles.guestCardButtonText}>Meu Nail Book 💅</Text>
+          <Ionicons name="arrow-forward-outline" size={16} color={colors.mocha}/>
+        </TouchableOpacity>
+      </View> : (
         <View style={styles.guestCard}>
           <View style={styles.guestCardHeader}>
             <Ionicons name="sparkles-outline" size={25} color={colors.mocha}/>
@@ -650,7 +660,9 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     </ScrollView>
   );
 
-  const AdminScreen = () => adminSection === 'perfil' ? (
+  const AdminScreen = () => adminSection === 'nailbook' ? (
+    <NailBook adminMode onBack={() => setAdminSection('clientes')}/>
+  ) : adminSection === 'perfil' ? (
     <View style={{flex:1}}>
       <TouchableOpacity
         accessibilityRole="button" onPress={() => setAdminSection('agenda')}
@@ -679,7 +691,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         style={{ marginBottom: 21 }}
-        contentContainerStyle={[styles.adminTabs, { minWidth: 950, marginBottom: 0 }]}>
+        contentContainerStyle={[styles.adminTabs, { minWidth: 1230, marginBottom: 0 }]}>
         {[
           ['agenda', 'Agenda'],
           ['manual', 'Agendar cliente'],
@@ -688,6 +700,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           ['portfolio', 'Portfólio'],
           ['financeiro', 'Financeiro'],
           ['pontos','TR Points'],
+          ['nailbook','Nail Book'],
+          ['whatsapp','WhatsApp'],
           ['perfil','Meu perfil'],
         ].map(([id, label]) => (
           <TouchableOpacity
@@ -707,6 +721,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       {adminSection === 'portfolio' && <PortfolioScreen adminMode services={services} />}
       {adminSection === 'financeiro' && <FinancialDashboard />}
       {adminSection === 'pontos' && <AdminPointsPrices services={services} onSaved={loadServices} />}
+      {adminSection === 'whatsapp' && <AdminWhatsApp/>}
       {adminSection === 'servicos' && (
         <View>
         <Text style={styles.sectionTitle}>Gerenciar serviços</Text>
@@ -864,6 +879,17 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           }}
         />}
         {currentScreen === 'Points' && user && !isAdmin && <TRPointsDashboard userId={user.id} onBack={() => setCurrentScreen('Home')} onRedeem={() => { setBookingStartStep(1);setPaymentMethod('points');setBookingView('new');setBookingSuccess('');setCurrentScreen('Booking'); }}/>}
+        {currentScreen === 'NailBook' && user && !isAdmin && <NailBook
+          clientId={user.id}
+          onBack={() => setCurrentScreen('Home')}
+          onRepeat={serviceId => {
+            setSelectedServiceId(serviceId);
+            setPaymentMethod('cash');
+            setBookingStartStep(2);
+            setBookingView('new');
+            setCurrentScreen('Booking');
+          }}
+        />}
         {currentScreen === 'Profile' && user && !isAdmin && <ProfileScreen
           user={user}
           onLogout={onLogout}

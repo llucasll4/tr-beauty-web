@@ -73,7 +73,7 @@ export default function AdminCalendar() {
       const end = `${nextMonth}-01T00:00:00-03:00`;
       const { data, error: queryError } = await supabase
         .from('appointments')
-        .select('id,client_id,starts_at,ends_at,status,price_at_booking,points_redeemed,services(name),profiles(full_name,phone)')
+        .select('id,client_id,starts_at,ends_at,status,price_at_booking,points_redeemed,attendance_confirmed_at,services(name),profiles(full_name,phone)')
         .gte('starts_at', start)
         .lt('starts_at', end)
         .order('starts_at', { ascending: true })
@@ -209,6 +209,11 @@ export default function AdminCalendar() {
           </View>
           <Text style={s.client}>{item.profiles?.full_name || 'Cliente sem nome'}</Text>
           <Text style={s.details}>{item.services?.name || 'Serviço'} • {item.points_redeemed ? Number(item.points_redeemed).toLocaleString('pt-BR')+' TR Points (resgate)' : money(item.price_at_booking)}</Text>
+          {!!item.attendance_confirmed_at && (
+            <Text style={[s.details,{color:C.green,fontWeight:'700',marginTop:5}]}>
+              ✓ Presença confirmada pela cliente via WhatsApp
+            </Text>
+          )}
           {!!item.profiles?.phone && <Text style={s.details}>Telefone: {item.profiles.phone}</Text>}
           {(item.status === 'pending' || item.status === 'confirmed') && (
             <View style={s.actions}>

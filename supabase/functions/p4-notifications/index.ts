@@ -157,10 +157,22 @@ async function sendWhatsapp(job: Job, appointment: any, number: string) {
         template: {
           name: template,
           language: { code: locale },
-          components: [{
-            type: 'body',
-            parameters: [name, service, date, hour].map(text => ({ type: 'text', text })),
-          }],
+          components: [
+            {
+              type: 'body',
+              parameters: [name, service, date, hour].map(text => ({ type: 'text', text })),
+            },
+            // Only enable when the matching Meta-approved templates include
+            // a quick-reply button at index 0 labelled "Confirmar presença".
+            ...(env('WA_REPLY_BUTTONS_ENABLED') === 'true' &&
+              (job.event_type === 'booking_confirmed' || job.event_type === 'reminder_24h')
+              ? [{
+                type: 'button', sub_type: 'quick_reply', index: '0',
+                parameters: [{
+                  type: 'payload', payload: 'TR_CONFIRM_' + job.appointment_id,
+                }],
+              }] : []),
+          ],
         },
       }),
     },
@@ -220,7 +232,7 @@ Deno.serve(async (request: Request) => {
           .select('id,starts_at,status,services(name),profiles(full_name,phone)')
           .eq('id', job.appointment_id).single(),
         db.from('notification_preferences')
-          .select('email_enabled,whatsapp_enabled')
+          .select('email_enabled,whatsapp_enabled,whatsapp_consented_at')
           .eq('user_id', job.client_id).maybeSingle(),
       ]);
       if (appointmentError || preferenceError || !appointment) {
@@ -236,7 +248,7 @@ Deno.serve(async (request: Request) => {
       };
       const channelEnabled = job.channel === 'email'
         ? preference?.email_enabled
-        : preference?.whatsapp_enabled;
+        : preference?.whatsapp_enabled && !!preference?.whatsapp_consented_at;
       if (!validStatus[job.event_type] || !channelEnabled) {
         status = 'skipped';
         lastError = 'Status mudou ou consentimento desativado';

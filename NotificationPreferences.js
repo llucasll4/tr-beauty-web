@@ -11,6 +11,7 @@ const C = {
 export default function NotificationPreferences({ userId }) {
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [whatsappConsentedAt, setWhatsappConsentedAt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -20,7 +21,7 @@ export default function NotificationPreferences({ userId }) {
     let active = true;
     setLoading(true);
     supabase.from('notification_preferences')
-      .select('email_enabled,whatsapp_enabled')
+      .select('email_enabled,whatsapp_enabled,whatsapp_consented_at')
       .eq('user_id', userId)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -28,6 +29,7 @@ export default function NotificationPreferences({ userId }) {
         if (error) throw error;
         setEmailEnabled(!!data?.email_enabled);
         setWhatsappEnabled(!!data?.whatsapp_enabled);
+        setWhatsappConsentedAt(data?.whatsapp_consented_at || null);
       })
       .catch(e => {
         if (active) {
@@ -57,8 +59,11 @@ export default function NotificationPreferences({ userId }) {
         user_id: userId,
         email_enabled: emailEnabled,
         whatsapp_enabled: whatsappEnabled,
+        whatsapp_consented_at: whatsappEnabled ? (whatsappConsentedAt || new Date().toISOString()) : null,
       }, { onConflict: 'user_id' });
       if (error) throw error;
+      if (whatsappEnabled && !whatsappConsentedAt) setWhatsappConsentedAt(new Date().toISOString());
+      if (!whatsappEnabled) setWhatsappConsentedAt(null);
       setMessage('Preferências de notificações salvas.');
     } catch (e) {
       setMessage('Não foi possível salvar: ' + (e?.message || 'erro desconhecido'));

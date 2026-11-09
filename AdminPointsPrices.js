@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
+import VipAdminSettings from './VipAdminSettings';
 
 const C = { ink:'#2C2C2C', mocha:'#7A655B', muted:'#756B65', border:'#EAE2DB', white:'#FFFFFF' };
 const points = value => Number(value||0).toLocaleString('pt-BR');
@@ -68,6 +69,7 @@ export default function AdminPointsPrices({services=[],onSaved=()=>{}}) {
         </TouchableOpacity>
       </View>
     </View>)}
+    <VipAdminSettings/>
   </View>;
 }
 

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
+import VipClub from './VipClub';
 
 const C = {
   bg: '#FDFBF7', white: '#FFFFFF', ink: '#2C2C2C', muted: '#766B65',
@@ -198,10 +199,15 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{}}) {
           <TouchableOpacity style={[s.tab,tab==='services'&&s.activeTab]}
             accessibilityRole="button" accessibilityState={{selected:tab==='services'}}
             onPress={()=>setTab('services')}>
-            <Text style={[s.tabText,tab==='services'&&s.activeTabText]}>Serviços realizados</Text>
+            <Text style={[s.tabText,tab==='services'&&s.activeTabText]}>Serviços</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.tab,tab==='vip'&&s.activeTab]}
+            accessibilityRole="button" accessibilityState={{selected:tab==='vip'}}
+            onPress={()=>setTab('vip')}>
+            <Text style={[s.tabText,tab==='vip'&&s.activeTabText]}>Clube VIP</Text>
           </TouchableOpacity>
         </View>
-        {tab==='ledger'?<>
+        {tab==='vip'?<VipClub/>:tab==='ledger'?<>
           <Text style={s.sectionTitle}>Movimentações de pontos</Text>
           <Text style={s.sectionCaption}>
             Histórico de créditos e descontos · {digits(totals.movements)} movimentos registrados
