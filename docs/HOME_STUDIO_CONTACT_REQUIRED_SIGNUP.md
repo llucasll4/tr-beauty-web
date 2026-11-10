@@ -13,9 +13,11 @@ A tela **Criar minha conta** exige os quatro campos: **Nome completo**, **Celula
 
 ## Rodapé da Home
 No final da tela inicial, após os serviços e o botão Sair (quando houver), o cartão de informações da TR Beauty Concept mostra:
-- **Telefone:** (11) 94690-1167 — toca para ligar via `tel:+5511946901167`
-- **CNPJ:** 65.056.708/0001-00
-- **Endereço:** Rua Santa Cruz, 537, Diadema – SP — toca para abrir a busca do endereço no Google Maps.
+- **WhatsApp da Talita:** (11) 94690-1167 — toque para abrir diretamente a conversa em `https://wa.me/5511946901167`.
+- **Instagram:** `@__thalitanaildesign` — toque para abrir `https://www.instagram.com/__thalitanaildesign?cplk=c3A4emlocGRxOXEx`.
+- **Endereço:** Rua Santa Cruz, 537, Diadema – SP — toque para abrir a busca do endereço no Google Maps.
+
+O CNPJ foi retirado da exibição no site, conforme solicitado. Nenhuma informação cadastral foi removida do banco.
 
 Paleta do aplicativo: creme `#FDFBF7`, nude `#EBE5DF`, café `#7A655B`. Rodapé disponível para visitante, cliente ou Admin sem autenticação adicional.
 
