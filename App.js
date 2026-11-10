@@ -812,29 +812,33 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         </View>
 
         <TouchableOpacity accessibilityRole="link"
-          accessibilityLabel="Ligar para o estúdio: 11 94690-1167"
-          onPress={() => Linking.openURL('tel:+5511946901167')}
+          accessibilityLabel="Conversar com a Talita pelo WhatsApp: (11) 94690-1167"
+          onPress={() => Linking.openURL('https://wa.me/5511946901167')}
           style={styles.studioInfoRow}>
           <View style={styles.studioInfoRowIcon}>
-            <Ionicons name="call-outline" size={20} color={colors.mocha}/>
+            <Ionicons name="logo-whatsapp" size={20} color={colors.mocha}/>
           </View>
           <View style={styles.studioInfoRowText}>
-            <Text style={styles.studioInfoLabel}>Telefone do estúdio</Text>
+            <Text style={styles.studioInfoLabel}>WhatsApp da Talita</Text>
             <Text style={styles.studioInfoValue}>(11) 94690-1167</Text>
           </View>
           <Ionicons name="arrow-up-forward-outline" size={17} color={colors.mocha}/>
         </TouchableOpacity>
 
         <View style={styles.studioInfoDivider}/>
-        <View style={styles.studioInfoRow}>
+        <TouchableOpacity accessibilityRole="link"
+          accessibilityLabel="Visitar o Instagram da Talita Nail Design"
+          onPress={() => Linking.openURL('https://www.instagram.com/__thalitanaildesign?cplk=c3A4emlocGRxOXEx')}
+          style={styles.studioInfoRow}>
           <View style={styles.studioInfoRowIcon}>
-            <Ionicons name="business-outline" size={20} color={colors.mocha}/>
+            <Ionicons name="logo-instagram" size={20} color={colors.mocha}/>
           </View>
           <View style={styles.studioInfoRowText}>
-            <Text style={styles.studioInfoLabel}>CNPJ</Text>
-            <Text style={styles.studioInfoValue}>65.056.708/0001-00</Text>
+            <Text style={styles.studioInfoLabel}>Instagram</Text>
+            <Text style={styles.studioInfoValue}>@__thalitanaildesign</Text>
           </View>
-        </View>
+          <Ionicons name="arrow-up-forward-outline" size={17} color={colors.mocha}/>
+        </TouchableOpacity>
 
         <View style={styles.studioInfoDivider}/>
         <TouchableOpacity accessibilityRole="link"
