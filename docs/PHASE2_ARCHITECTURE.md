@@ -38,7 +38,7 @@ A Home era declarada **dentro** de `MainApp`. A cada atualização do controlado
 
 ## Builds reproduzíveis
 
-O projeto antes não versionava `package-lock.json`; a instalação usava `npm install` em todas as execuções. O objetivo é versionar o lock real, gerado pelo npm em um runner limpo, e substituir o passo do CI por `npm ci`. Isso evita atualizações implícitas de dependências transitivas entre instalações.
+O projeto antes não versionava `package-lock.json`; a instalação usava `npm install` em todas as execuções. **Agora o lockfile v3 foi gerado por `npm install` em um runner limpo (Node 22), validado contra `package.json` e versionado com 1.163 entradas da árvore de pacotes.** O CI usa `npm ci` para reproduzir a resolução exata. Isso evita atualizações implícitas de dependências transitivas entre instalações.
 
 Não usar uma árvore de dependências inventada ou um lockfile montado manualmente. Quando atualizar pacotes, regenerar o lock e exigir aprovação dos dois checks de CI.
 
