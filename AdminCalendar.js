@@ -5,11 +5,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
+import { palette } from './theme/tokens';
 
 const C = {
-  bg: '#FDFBF7', white: '#FFFFFF', ink: '#2C2C2C',
-  nude: '#EBE5DF', mocha: '#7A655B', muted: '#8E8E93',
-  border: '#EBE5DF', green: '#287451', red: '#A63D40',
+  bg: palette.cream, white: palette.paper, ink: palette.ink,
+  nude: palette.nude, mocha: palette.mocha, muted: palette.muted,
+  border: palette.nude, green: palette.green, red: palette.danger,
 };
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const LABELS = {
