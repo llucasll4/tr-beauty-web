@@ -68,6 +68,8 @@ export default function AdminClients() {
   const [notice, setNotice] = useState('');
   const [loyalty, setLoyalty] = useState(null);
   const [loyaltyError, setLoyaltyError] = useState('');
+  const [carePreferences,setCarePreferences] = useState(null);
+  const [careError,setCareError] = useState('');
   const selected = clients.find(c => c.id === selectedId) || null;
 
   useEffect(() => {
@@ -134,6 +136,28 @@ export default function AdminClients() {
       });
     return () => { active = false; };
   }, [selectedId, refresh]);
+
+  // As preferências registradas pela cliente também ficam disponíveis
+  // para a profissional no atendimento, sob a RLS exclusiva do Admin.
+  useEffect(() => {
+    if(!selectedId){
+      setCarePreferences(null);
+      setCareError('');
+      return;
+    }
+    let active=true;
+    setCarePreferences(null);
+    setCareError('');
+    supabase.from('client_care_preferences')
+      .select('service_style,favorite_drink').eq('user_id',selectedId).maybeSingle()
+      .then(({data,error})=>{
+        if(error)throw error;
+        if(active)setCarePreferences(data||null);
+      }).catch(error=>{
+        if(active)setCareError('Não foi possível consultar as preferências da cliente.');
+      });
+    return()=>{active=false;};
+  },[selectedId,refresh]);
 
   function performSearch() {
     const next = searchText.trim();
@@ -228,6 +252,14 @@ export default function AdminClients() {
             <Text style={s.totalLabel}>TR Points da cliente</Text>
             <Text style={s.totalValue}>{loyalty ? Number(loyalty.balance || 0).toLocaleString('pt-BR') + ' pontos' : '—'}</Text>
             {!!loyaltyError && <Text style={s.error}>{loyaltyError}</Text>}
+            <Text style={s.totalLabel}>Preferências de atendimento</Text>
+            <Text style={s.detailText}>Estilo: {carePreferences
+              ? ({silencioso:'Silencioso',conversar:'Gosta de conversar',sem_preferencia:'Sem preferência'}[carePreferences.service_style]||'Sem preferência')
+              : 'Sem preferência cadastrada'}</Text>
+            <Text style={s.detailText}>Bebida: {carePreferences
+              ? ({agua:'Água',cafe:'Café expresso',cha:'Chá',sem_preferencia:'Sem preferência'}[carePreferences.favorite_drink]||'Sem preferência')
+              : 'Sem preferência cadastrada'}</Text>
+            {!!careError&&<Text style={s.error}>{careError}</Text>}
             {!!whatsappNumber(selected.phone) && (
               <TouchableOpacity style={s.whatsapp} onPress={openWhatsapp}>
                 <Ionicons name="logo-whatsapp" size={20} color={C.white}/>
