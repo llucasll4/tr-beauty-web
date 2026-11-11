@@ -35,7 +35,7 @@ function CropSlider({label,value,min,max,step=1,onChange,disabled}) {
     })}
   </View>;
 }
-export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNameChange=()=>{},requirePhone=false,showPoints=true,onOpenRules=()=>{}}) {
+export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNameChange=()=>{},requirePhone=false,showPoints=true,showNotificationPreferences=true,onOpenRules=()=>{}}) {
  const [name,setName]=useState('');
  const [phone,setPhone]=useState('');
  const [email,setEmail]=useState(user?.email||'');
@@ -225,7 +225,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
   <TouchableOpacity accessibilityRole="button" style={s.button} onPress={saveProfile} disabled={busy}>
     <Text style={s.buttonText}>{busy?'Salvando...':'Salvar alterações'}</Text>
   </TouchableOpacity>
-  <NotificationPreferences userId={user.id}/>
+  {showNotificationPreferences && <NotificationPreferences userId={user.id}/>}
   <TouchableOpacity style={s.logout} onPress={onLogout} accessibilityRole="button">
     <Ionicons name="log-out-outline" size={18} color={C.mocha}/>
     <Text style={{color:C.mocha,fontWeight:'600'}}>Sair da conta</Text>
