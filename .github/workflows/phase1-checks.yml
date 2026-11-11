@@ -25,19 +25,21 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      # Fase 2: transporte temporário do lock gerado no runner limpo.
-      # Não lê segredos, tokens ou variáveis de produção.
-      - name: Phase 2 temporary lockfile capture
+      # Temporário: expor somente metadados públicos de dependências.
+      - name: Phase 2 temporary lockfile transport
         if: github.head_ref == 'refactor/phase2-modular-ui-theme-20261111'
         run: |
           node - <<'NODE'
-          const fs = require('node:fs');
-          const zlib = require('node:zlib');
-          const text = fs.readFileSync('package-lock.json');
-          const digest = require('node:crypto').createHash('sha256').update(text).digest('hex');
-          const payload = zlib.gzipSync(text, {level: 9}).toString('base64');
-          console.log('PHASE2_SHA256:' + digest);
-          console.log('PHASE2_LOCK_BEGIN:' + payload + ':PHASE2_LOCK_END');
+          const fs=require('node:fs');
+          const crypto=require('node:crypto');
+          const bytes=fs.readFileSync('package-lock.json','utf8');
+          const minified=JSON.stringify(JSON.parse(bytes));
+          const digest=crypto.createHash('sha256').update(minified).digest('hex');
+          console.log('PHASE2_LOCK_SHA256:'+digest);
+          for(let i=0;i<minified.length;i+=32000){
+            console.log('PHASE2_LOCK_CHUNK:'+i+':'+minified.slice(i,i+32000));
+          }
+          console.log('PHASE2_LOCK_TOTAL:'+minified.length);
           NODE
       - name: Unit tests
         run: npm test
