@@ -130,7 +130,7 @@ export default function LoyaltyCard({ userId, refreshSignal = 0, onOpenDetails }
       </TouchableOpacity>
       <TouchableOpacity style={s.refresh} onPress={() => load()} disabled={loading} accessibilityLabel="Atualizar TR Points">
         <Ionicons name="refresh" size={15} color={C.mocha}/>
-        <Text style={s.refreshText}>Atualizar saldo</Text>
+        <Text style={s.refreshText}>Atualizar pontos e nível</Text>
       </TouchableOpacity>
     </View>
   );
