@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import VipClub from './VipClub';
+import { getVipProgress } from './vipProgress';
 
 const C = {
   bg: '#FDFBF7', white: '#FFFFFF', ink: '#2C2C2C', muted: '#766B65',
@@ -49,6 +50,8 @@ function Item({icon,label,value,detail,positive}) {
 export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initialTab='ledger'}) {
   const {width} = useWindowDimensions();
   const [overview,setOverview] = useState(null);
+  const [vipSummary,setVipSummary] = useState(null);
+  const [vipSettings,setVipSettings] = useState(null);
   const [totals,setTotals] = useState(emptyTotals);
   const [entries,setEntries] = useState([]);
   const [services,setServices] = useState([]);
@@ -82,13 +85,19 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
     if(!userId)return;
     setLoading(true);setError('');setLoadError('');
     try {
-      const [summary,stats,ledger,appointments]=await Promise.all([
+      const [summary,stats,ledger,appointments,vip,thresholds]=await Promise.all([
         supabase.rpc('get_my_loyalty'),
         supabase.rpc('get_my_points_totals'),
         fetchLedger(0), fetchServices(0),
+        supabase.rpc('get_my_vip_summary'),
+        supabase.from('vip_settings').select('silver_points,gold_points').eq('id',1).maybeSingle(),
       ]);
-      for(const result of [summary,stats,ledger,appointments]) if(result.error) throw result.error;
+      for(const result of [summary,stats,ledger,appointments,vip,thresholds]) {
+        if(result.error) throw result.error;
+      }
       setOverview(summary.data || null);
+      setVipSummary(vip.data || null);
+      setVipSettings(thresholds.data || null);
       setTotals(stats.data || emptyTotals);
       setEntries(ledger.data || []);
       setServices(appointments.data || []);
@@ -129,8 +138,7 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
   }
 
   const balance=Math.max(0,Number(overview?.balance||0));
-  const goal=Math.max(1,Number(overview?.goal_points||300));
-  const progress=Math.min(100,100*balance/goal);
+  const vipProgress=getVipProgress(vipSummary,vipSettings);
   const twoCols=width>=650;
 
   return <View style={s.root}>
@@ -166,17 +174,32 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
             <Ionicons name="diamond-outline" color={C.ink} size={22}/>
           </View>
           <Text style={s.heroNumber}>{digits(balance)}</Text>
-          <Text style={s.heroCaption}>Pontos disponíveis</Text>
-          <View style={s.progressTrack}>
-            <View style={[s.progressFill,{width:progress+'%'}]}/>
-          </View>
-          <Text style={s.heroHelp}>
-            {!overview?.enabled
-              ? 'O programa de pontos está pausado no momento.'
-              : balance>=goal
-                ? 'Você atingiu a meta atual! Consulte o estúdio sobre os benefícios.'
-                : 'Faltam '+digits(goal-balance)+' pontos para a meta de '+digits(goal)+'.'}
-          </Text>
+          <Text style={s.heroCaption}>Pontos disponíveis para resgate</Text>
+          {overview?.enabled && vipProgress && <>
+            <View style={s.levelRow}>
+              <Text style={s.levelLabel}>Nível {vipProgress.tier}</Text>
+              <Text style={s.levelNext}>
+                {vipProgress.nextTier ? 'Próximo: '+vipProgress.nextTier : 'Nível máximo'}
+              </Text>
+            </View>
+            <View style={s.progressTrack} accessibilityRole="progressbar"
+              accessibilityValue={{min:0,max:100,now:Math.round(vipProgress.progress)}}>
+              <View style={[s.progressFill,{width:vipProgress.progress+'%'}]}/>
+            </View>
+            <Text style={s.heroHelp}>
+              {vipProgress.nextTier
+                ? 'Meta do nível '+vipProgress.nextTier+': '+digits(vipProgress.goal)+
+                  ' pontos acumulados. Faltam '+digits(vipProgress.remaining)+' pontos.'
+                : 'Você já alcançou o nível Ouro, o mais alto do Clube VIP!'}
+            </Text>
+            <Text style={s.heroNote}>
+              {digits(vipProgress.lifetime)} pontos acumulados. Resgatar pontos não reduz seu nível.
+            </Text>
+          </>}
+          {overview?.enabled && !vipProgress &&
+            <Text style={s.heroHelp}>Meta VIP indisponível. Toque em atualizar para consultar novamente.</Text>}
+          {!overview?.enabled &&
+            <Text style={s.heroHelp}>O programa de pontos está pausado no momento.</Text>}
         </View>
         <TouchableOpacity onPress={onRedeem} accessibilityRole="button"
           accessibilityLabel="Usar TR Points para agendar um serviço" style={s.redeemCta}>
@@ -307,9 +330,14 @@ const s=StyleSheet.create({
   brand:{fontWeight:'700',fontSize:12,color:C.mocha,letterSpacing:1.6},
   heroNumber:{fontSize:48,fontWeight:'700',color:C.ink,marginTop:20},
   heroCaption:{color:C.mocha,fontSize:15,marginTop:2},
+  levelRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10,
+    flexWrap:'wrap',marginTop:20},
+  levelLabel:{fontSize:14,fontWeight:'700',color:C.ink},
+  levelNext:{fontSize:12,color:C.mocha,fontWeight:'600'},
   progressTrack:{height:9,borderRadius:6,backgroundColor:'#D6CBC1',marginTop:22,overflow:'hidden'},
   progressFill:{backgroundColor:C.ink,height:9,borderRadius:6},
   heroHelp:{color:C.mocha,fontSize:12,lineHeight:19,marginTop:12},
+  heroNote:{color:C.muted,fontSize:11,lineHeight:18,marginTop:8},
   redeemCta:{backgroundColor:C.ink,borderRadius:13,padding:17,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:10,marginBottom:18},
   redeemCtaText:{fontWeight:'700',fontSize:14,color:'#FFFFFF',flexShrink:1},
   metrics:{gap:12,marginBottom:19},
