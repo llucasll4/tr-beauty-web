@@ -5,13 +5,14 @@ import {
 } from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import {supabase} from './supabase';
+import { palette } from './theme/tokens';
 
 // Mesma linguagem de composição das quatro telas de referência,
 // usando a paleta creme, nude e café da TR Beauty Concept.
 const C={
-  bg:'#FDFBF7', paper:'#FFFFFF', white:'#FFFFFF', ink:'#2C2C2C',
-  mocha:'#7A655B', secondary:'#856F63', subtle:'#B0A196',
-  border:'#EBE5DF', nude:'#EBE5DF', nudeLight:'#F5EDE6',
+  bg:palette.cream, paper:palette.paper, white:palette.paper, ink:palette.ink,
+  mocha:palette.mocha, secondary:'#856F63', subtle:'#B0A196',
+  border:palette.nude, nude:palette.nude, nudeLight:palette.softNude,
   green:'#27734D', danger:'#A73546',
 };
 const clock=new Intl.DateTimeFormat('pt-BR',{

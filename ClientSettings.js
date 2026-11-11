@@ -8,11 +8,14 @@ import { supabase } from './supabase';
 import { getVipProgress } from './vipProgress';
 import ProfileScreen from './ProfileScreen';
 import PrivacyNotice from './PrivacyNotice';
+import { palette } from './theme/tokens';
 
 const C = {
-  background:'#F9F5F0', white:'#FFFFFF', ink:'#30231E', brown:'#402816',
-  mocha:'#7A655B', muted:'#82766D', nude:'#EBE3D9', border:'#E9DED3',
-  gold:'#BF9562', green:'#26714A', red:'#AA4A4C', soft:'#F5EFE8',
+  background:palette.profileBackground, white:palette.paper,
+  ink:palette.warmInk, brown:palette.brown, mocha:palette.mocha,
+  muted:palette.profileMuted, nude:palette.warmNude,
+  border:palette.warmBorder, gold:palette.gold,
+  green:palette.profileGreen, red:palette.profileRed, soft:palette.soft,
 };
 const stylesOptions = [
   {value:'sem_preferencia',label:'Sem preferência',description:'O atendimento segue naturalmente.'},

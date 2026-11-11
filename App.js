@@ -2,14 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
-  Image,
-  Linking,
   Modal,
-  Platform,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -29,8 +24,6 @@ import AdminCalendar from './AdminCalendar';
 import AdminCalendarBlocks from './AdminCalendarBlocks';
 import AdminManualBooking from './AdminManualBooking';
 import AdminClients from './AdminClients';
-import LoyaltyCard from './LoyaltyCard';
-import NextSelfCareCard from './NextSelfCareCard';
 import TRPointsDashboard from './TRPointsDashboard';
 import AdminPointsPrices from './AdminPointsPrices';
 import PortfolioScreen from './PortfolioScreen';
@@ -41,76 +34,12 @@ import AdminNotifications from './AdminNotifications';
 import NailBook from './NailBook';
 import AdminWhatsApp from './AdminWhatsApp';
 import BookingWizard from './BookingWizard';
+import {brandColors as colors, homeColors} from './theme/tokens';
+import styles from './appStyles';
+import HomeScreen from './HomeScreen';
+import {localDateKey,futureDates,initialBookableDate,buildCalendar} from './utils/calendar';
 
-const { width } = Dimensions.get('window');
-const imageSize = (width - 48 - 16) / 2;
-const colors = {
-  background: '#FDFBF7',
-  white: '#FFFFFF',
-  ink: '#2C2C2C',
-  muted: '#8E8E93',
-  nude: '#EBE5DF',
-  mocha: '#7A655B',
-  border: '#EBE5DF',
-};
-// Tons quentes da referência — somente Home e navegação, sem mudar o tema global.
-const homeColors = { background: '#FAF9F5', brown: '#402816', bronze: '#9B6840' };
-
-// Emojis relacionados a unhas para os cards, sem associar gel a gotas d'água.
-const emojiForHomeService = (name = '') => {
-  const label = String(name).toLocaleLowerCase('pt-BR');
-  if (label.includes('nail art') || label.includes('decora') || label.includes('arte')) return '🎨';
-  if (label.includes('manuten') || label.includes('alongamento') || label.includes('gel') ||
-      label.includes('esmalta') || label.includes('unha') || label.includes('banho')) return '💅';
-  return '✨';
-};
-const brazilClock = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
-const brazilDate = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
-function localDateKey(date) {
-  const parts = Object.fromEntries(brazilDate.formatToParts(date).map(x => [x.type, x.value]));
-  return `${parts.year}-${parts.month}-${parts.day}`;
-}
-function futureDates() {
-  const today = localDateKey(new Date());
-  const base = new Date(`${today}T12:00:00Z`);
-  return Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(base.getTime() + i * 86400000);
-    return { key: d.toISOString().slice(0, 10), label: d.toLocaleDateString('pt-BR', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: '2-digit' }) };
-  });
-}
-const readableDate = (iso) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-const monthLabel = (monthKey) => {
-  const [y, m] = monthKey.split('-').map(Number);
-  const label = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('pt-BR', {
-    timeZone: 'UTC', month: 'long', year: 'numeric',
-  });
-  return label.charAt(0).toUpperCase() + label.slice(1);
-};
-const offsetMonth = (monthKey, offset) => {
-  const [y, m] = monthKey.split('-').map(Number);
-  const newDate = new Date(Date.UTC(y, m - 1 + offset, 1));
-  return newDate.toISOString().slice(0, 7);
-};
-const initialBookableDate = () => futureDates().find(({ key }) => {
-  const weekday = new Date(`${key}T12:00:00Z`).getUTCDay();
-  return weekday >= 2 && weekday <= 6;
-})?.key || localDateKey(new Date());
-function buildCalendar(monthKey, allowedDateKeys, openWeekdays = null) {
-  const [year, month] = monthKey.split('-').map(Number);
-  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
-  const firstColumn = (firstWeekday + 6) % 7; // Segunda-feira primeiro
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const cells = Array.from({ length: firstColumn }, () => null);
-  for (let day = 1; day <= daysInMonth; day++) {
-    const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-    cells.push({ key, day, enabled: allowedDateKeys.has(key) && (!openWeekdays || openWeekdays.has(weekday)) });
-  }
-  while (cells.length % 7) cells.push(null);
-  return cells;
-}
+// Cores originais importadas de uma fonte de verdade compartilhada.
 
 function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home', initialServiceId = null }) {
   const [currentScreen, setCurrentScreen] = useState(isAdmin ? 'Admin' : initialScreen);
@@ -697,262 +626,6 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     setStatusSavingId(null);
   }
 
-  const HomeScreen = () => (
-    <ScrollView style={styles.homeScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      <View style={styles.homeGreetingHeader}>
-        <TouchableOpacity style={styles.greetingAvatarButton} accessibilityRole="button"
-          accessibilityLabel={isAdmin ? 'Abrir meu perfil no Admin' : user ? 'Abrir perfil' : 'Entrar ou criar conta'}
-          onPress={() => isAdmin ? (setAdminSection('perfil'),setCurrentScreen('Admin')) :
-            user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
-          {user && homeAvatar
-            ? <Image source={{ uri: homeAvatar }} style={styles.greetingAvatarImage}
-                resizeMode="cover" accessibilityLabel="Minha foto de perfil" />
-            : <Ionicons name="person-outline" size={29} color={colors.mocha}/>}
-        </TouchableOpacity>
-        <View style={styles.greetingTextBlock}>
-          <Text style={styles.greetingFullName} numberOfLines={1}
-            adjustsFontSizeToFit>Olá, {displayName}!</Text>
-        </View>
-        <TouchableOpacity style={styles.homeBellButton} accessibilityRole="button"
-          accessibilityLabel={user ? 'Abrir notificações' :
-            'Entre na sua conta para ver notificações'}
-          onPress={() => {
-            if(user) { setNotificationReturnScreen('Home'); setCurrentScreen('Notifications'); }
-            else onRequestAuth('Home');
-          }}>
-          <Ionicons name="notifications-outline" size={29} color={homeColors.brown}/>
-          {user && (isAdmin || appAlertsEnabled) && (isAdmin ? unreadAdminCount : unreadNotifications) > 0 && (
-            <View style={styles.homeBellBadge}>
-              <Text style={styles.homeBellBadgeText}>
-                {(isAdmin ? unreadAdminCount : unreadNotifications) > 9 ? '9+' :
-                  String(isAdmin ? unreadAdminCount : unreadNotifications)}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {isAdmin ? (
-        <View style={styles.guestCard}>
-          <View style={styles.guestCardHeader}>
-            <Ionicons name="settings-outline" size={24} color={colors.mocha}/>
-            <Text style={styles.guestCardTitle}>Área administrativa</Text>
-          </View>
-          <Text style={styles.guestCardText}>Acesse a agenda, as clientes e as ferramentas do estúdio em um só lugar.</Text>
-          <TouchableOpacity style={styles.guestCardButton} onPress={() => setCurrentScreen('Admin')}
-            accessibilityRole="button">
-            <Text style={styles.guestCardButtonText}>Abrir painel Admin</Text>
-            <Ionicons name="arrow-forward-outline" size={16} color={colors.mocha}/>
-          </TouchableOpacity>
-        </View>
-      ) : user ? <View>
-        <NextSelfCareCard
-          userId={user.id}
-          refreshSignal={myAppointmentsRefresh}
-          onOpenAppointments={() => {
-            setBookingView('hub');
-            setBookingSuccess('');
-            setCurrentScreen('Booking');
-          }}
-        />
-        <LoyaltyCard userId={user.id} refreshSignal={myAppointmentsRefresh}
-          onOpenDetails={() => {
-          setPointsInitialTab('ledger');
-          setPointsReturnScreen('Home');
-          setCurrentScreen('Points');
-        }} />
-      </View> : (
-        <View style={styles.guestCard}>
-          <View style={styles.guestCardHeader}>
-            <Ionicons name="sparkles-outline" size={25} color={colors.mocha}/>
-            <Text style={styles.guestCardTitle}>Conheça a TR Beauty Concept</Text>
-          </View>
-          <Text style={styles.guestCardText}>Veja nossos serviços e trabalhos sem precisar criar uma conta. Para reservar um horário, entre ou cadastre-se.</Text>
-          <TouchableOpacity style={styles.guestCardButton} accessibilityRole="button"
-            onPress={() => onRequestAuth('Home')}>
-            <Text style={styles.guestCardButtonText}>Entrar ou criar conta</Text>
-            <Ionicons name="arrow-forward-outline" size={16} color={colors.mocha}/>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {isAdmin && <TouchableOpacity style={styles.primaryButton}
-        onPress={() => { setCurrentScreen('Admin'); setShowAdminBookingModal(true); }}>
-        <Text style={styles.primaryButtonText}>Agendar cliente</Text>
-        <Ionicons name="calendar-outline" size={20} color={colors.background} />
-      </TouchableOpacity>}
-
-      <View style={styles.homeSectionHeading}>
-        <View style={styles.homeSectionLabel}>
-          <Text style={styles.homeSectionTitle}>Serviços</Text>
-          <View style={styles.homeSectionAccent}/>
-        </View>
-        {!isAdmin && activeServices.length > 4 && (
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Ver todos os serviços"
-            style={styles.homeSectionLink}
-            onPress={() => { setBookingStartStep(1); setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } }}>
-            <Text style={styles.homeSectionLinkText}>Ver todos</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.mocha}/>
-          </TouchableOpacity>
-        )}
-      </View>
-      {servicesLoading && <ActivityIndicator color={colors.mocha} />}
-      {!!serviceError && !isAdmin && <Text style={styles.loginError}>{serviceError}</Text>}
-      {!servicesLoading && activeServices.length === 0 && (
-        <Text style={styles.subtitle}>Nenhum serviço disponível por enquanto.</Text>
-      )}
-      <View style={styles.homeServicesGrid}>
-        {activeServices.slice(0, 4).map(service => (
-          <TouchableOpacity key={service.id} style={styles.homeServiceCard}
-            disabled={isAdmin} accessibilityRole="button"
-            accessibilityLabel={service.name + ', ' + money(service.price) + ', ' + service.duration_minutes + ' minutos'}
-            onPress={() => {
-              setSelectedServiceId(service.id);
-              setSelectedTime(null);
-              setPaymentMethod('cash');
-              setBookingStartStep(2);
-              setBookingSuccess('');
-              if (user) setBookingView('new');
-              setCurrentScreen('Booking');
-            }}>
-            <Text style={styles.homeServiceEmoji} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-              {emojiForHomeService(service.name)}
-            </Text>
-            <Text style={styles.homeServiceName} numberOfLines={2}>{service.name}</Text>
-            <Text style={styles.homeServiceMeta}>
-              {money(service.price)} · {service.duration_minutes} min
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {!isAdmin && (
-        <View style={styles.homeInspirationsSection}>
-          <View style={styles.homeSectionHeading}>
-            <View style={styles.homeSectionLabel}>
-              <Text style={styles.homeSectionTitle}>Inspirações</Text>
-              <View style={styles.homeSectionAccent}/>
-            </View>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Ver todas as inspirações"
-              style={styles.homeSectionLink} onPress={() => setCurrentScreen('Portfolio')}>
-              <Text style={styles.homeSectionLinkText}>Ver todas</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.mocha}/>
-            </TouchableOpacity>
-          </View>
-          {homeInspirationsLoading && <ActivityIndicator color={colors.mocha}/>}
-          {!!homeInspirationsError && (
-            <Text style={styles.homeGalleryMessage}>{homeInspirationsError}</Text>
-          )}
-          {!homeInspirationsLoading && !homeInspirationsError && homeInspirations.length === 0 && (
-            <Text style={styles.homeGalleryMessage}>Novas inspirações chegarão em breve.</Text>
-          )}
-          {homeInspirations.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.homeInspirationCarousel}
-              accessibilityLabel="Carrossel de inspirações do estúdio">
-              {homeInspirations.map(photo => (
-                <TouchableOpacity key={photo.id} style={styles.homeInspirationCard}
-                  accessibilityRole="button" accessibilityLabel={'Abrir galeria: ' + photo.title}
-                  onPress={() => setCurrentScreen('Portfolio')}>
-                  <Image style={styles.homeInspirationImage} resizeMode="cover"
-                    source={{ uri: supabase.storage.from('portfolio').getPublicUrl(photo.image_path).data.publicUrl }}/>
-                  <Text numberOfLines={1} style={styles.homeInspirationName}>{photo.title}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-      )}
-
-      {!isAdmin && <TouchableOpacity style={styles.primaryButton}
-        accessibilityRole="button"
-        onPress={() => { setBookingStartStep(1); setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } }}>
-        <Text style={styles.primaryButtonText}>Agendar Meu Horário</Text>
-        <Ionicons name="calendar-outline" size={20} color={colors.background}/>
-      </TouchableOpacity>}
-
-      {user && !isAdmin && (
-        <TouchableOpacity accessibilityRole="button" onPress={() => setCurrentScreen('NailBook')}
-          style={[styles.guestCardButton, styles.homeNailBookButton]}>
-          <Ionicons name="images-outline" size={20} color={colors.mocha}/>
-          <Text style={styles.guestCardButtonText}>Meu Nail Book 💅</Text>
-          <Ionicons name="arrow-forward-outline" size={16} color={colors.mocha}/>
-        </TouchableOpacity>
-      )}
-      {user && <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
-        <Ionicons name="log-out-outline" size={18} color={colors.mocha} />
-        <Text style={styles.logoutText}>Sair da conta</Text>
-      </TouchableOpacity>}
-
-      <View style={styles.studioInfoCard}>
-        <View style={styles.studioInfoHeader}>
-          <View style={styles.studioInfoLogo}>
-            <Ionicons name="sparkles-outline" color={colors.mocha} size={22}/>
-          </View>
-          <View style={{flex:1}}>
-            <Text style={styles.studioInfoHeading}>TR Beauty Concept</Text>
-            <Text style={styles.studioInfoTagline}>Informações do estúdio</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity accessibilityRole="link"
-          accessibilityLabel="Conversar com o Studio pelo WhatsApp: (11) 94690-1167"
-          onPress={() => Linking.openURL('https://wa.me/5511946901167')}
-          style={styles.studioInfoRow}>
-          <View style={styles.studioInfoRowIcon}>
-            <Ionicons name="logo-whatsapp" size={20} color={colors.mocha}/>
-          </View>
-          <View style={styles.studioInfoRowText}>
-            <Text style={styles.studioInfoLabel}>WhatsApp do Studio</Text>
-            <Text style={styles.studioInfoValue}>(11) 94690-1167</Text>
-          </View>
-          <Ionicons name="arrow-up-forward-outline" size={17} color={colors.mocha}/>
-        </TouchableOpacity>
-
-        <View style={styles.studioInfoDivider}/>
-        <TouchableOpacity accessibilityRole="link"
-          accessibilityLabel="Visitar o Instagram da Talita Nail Design"
-          onPress={() => Linking.openURL('https://www.instagram.com/__thalitanaildesign?cplk=c3A4emlocGRxOXEx')}
-          style={styles.studioInfoRow}>
-          <View style={styles.studioInfoRowIcon}>
-            <Ionicons name="logo-instagram" size={20} color={colors.mocha}/>
-          </View>
-          <View style={styles.studioInfoRowText}>
-            <Text style={styles.studioInfoLabel}>Instagram</Text>
-            <Text style={styles.studioInfoValue}>@__thalitanaildesign</Text>
-          </View>
-          <Ionicons name="arrow-up-forward-outline" size={17} color={colors.mocha}/>
-        </TouchableOpacity>
-
-        <View style={styles.studioInfoDivider}/>
-        <TouchableOpacity accessibilityRole="link"
-          accessibilityLabel="Ver localização do estúdio no mapa"
-          onPress={() => Linking.openURL(
-            'https://www.google.com/maps/search/?api=1&query=' +
-            encodeURIComponent('Rua Santa Cruz, 537, Diadema, SP')
-          )}
-          style={styles.studioInfoRow}>
-          <View style={styles.studioInfoRowIcon}>
-            <Ionicons name="location-outline" size={20} color={colors.mocha}/>
-          </View>
-          <View style={styles.studioInfoRowText}>
-            <Text style={styles.studioInfoLabel}>Endereço</Text>
-            <Text style={styles.studioInfoValue}>Rua Santa Cruz, 537</Text>
-            <Text style={styles.studioInfoAddress}>Diadema – SP</Text>
-          </View>
-          <Ionicons name="arrow-up-forward-outline" size={17} color={colors.mocha}/>
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.studioInfoFooter}>Estúdio especializado em unhas 💅</Text>
-      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Ler aviso de privacidade"
-        onPress={()=>setPrivacyVisible(true)} style={{alignSelf:'center',paddingVertical:14}}>
-        <Text style={{color:colors.mocha,fontSize:12,fontWeight:'700',textDecorationLine:'underline'}}>
-          Aviso de Privacidade
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
-
   const AdminScreen = () => adminSection === 'nailbook' ? (
     <NailBook adminMode onBack={() => setAdminSection('clientes')}/>
   ) : adminSection === 'perfil' ? (
@@ -1199,7 +872,26 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.mainContent}>
-        {currentScreen === 'Home' && HomeScreen()}
+        {currentScreen === 'Home' && <HomeScreen
+          user={user} isAdmin={isAdmin} homeAvatar={homeAvatar}
+          displayName={displayName} appAlertsEnabled={appAlertsEnabled}
+          unreadAdminCount={unreadAdminCount} unreadNotifications={unreadNotifications}
+          myAppointmentsRefresh={myAppointmentsRefresh}
+          activeServices={activeServices} servicesLoading={servicesLoading}
+          serviceError={serviceError} homeInspirations={homeInspirations}
+          homeInspirationsLoading={homeInspirationsLoading}
+          homeInspirationsError={homeInspirationsError}
+          onLogout={onLogout} onRequestAuth={onRequestAuth}
+          setCurrentScreen={setCurrentScreen} setAdminSection={setAdminSection}
+          setNotificationReturnScreen={setNotificationReturnScreen}
+          setBookingView={setBookingView} setBookingSuccess={setBookingSuccess}
+          setPointsInitialTab={setPointsInitialTab}
+          setPointsReturnScreen={setPointsReturnScreen}
+          setShowAdminBookingModal={setShowAdminBookingModal}
+          setSelectedServiceId={setSelectedServiceId} setSelectedTime={setSelectedTime}
+          setPaymentMethod={setPaymentMethod} setBookingStartStep={setBookingStartStep}
+          setPrivacyVisible={setPrivacyVisible} money={money}
+        />}
         {currentScreen === 'Booking' && !isAdmin && (user && bookingView !== 'new' ? (
           <ClientAppointments userId={user.id}
             refreshSignal={myAppointmentsRefresh}
@@ -1500,237 +1192,3 @@ export default function App() {
     initialScreen={returnScreen}
     initialServiceId={returnServiceId}/>;
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-  mainContent: { flex: 1 },
-  container: { padding: 24, paddingBottom: 40 },
-  homeScroll: { backgroundColor: homeColors.background },
-  adminHeader:{flexDirection:'row',alignItems:'center',gap:13,marginBottom:20,marginTop:8},
-  adminTitle:{fontSize:23,fontWeight:'800',color:colors.ink,letterSpacing:-0.5},
-  adminSubtitle:{fontSize:13,color:'#756F6A',marginTop:5,lineHeight:19},
-  adminHeaderActions:{flexDirection:'row',alignItems:'center',gap:6},
-  adminHeaderIcon:{width:42,height:42,alignItems:'center',justifyContent:'center',position:'relative'},
-  adminUnreadDot:{width:10,height:10,borderRadius:5,backgroundColor:'#C82637',
-    position:'absolute',right:6,top:5,borderWidth:1,borderColor:'#F4F5F7'},
-  adminKpiHeader:{flexDirection:'row',justifyContent:'space-between',
-    alignItems:'center',marginBottom:12},
-  adminKpiHeading:{fontSize:17,fontWeight:'700',color:colors.ink},
-  adminKpiRow:{flexDirection:'row',gap:10,marginBottom:24},
-  adminKpiCard:{flex:1,borderRadius:15,paddingHorizontal:13,paddingVertical:16,minWidth:0},
-  adminKpiLabel:{fontSize:12,color:colors.ink,marginBottom:5},
-  adminKpiValue:{fontSize:20,fontWeight:'800',color:colors.ink,minHeight:25},
-  adminKpiError:{fontSize:12,color:'#B42318',marginBottom:12},
-  adminSettingsCard:{borderRadius:18,backgroundColor:colors.white,
-    borderWidth:1,borderColor:colors.border,paddingHorizontal:17,paddingTop:18,
-    paddingBottom:6,marginBottom:20},
-  adminSettingsTitle:{fontSize:19,fontWeight:'800',color:colors.ink},
-  adminSettingsSubtitle:{fontSize:12,color:colors.mocha,marginTop:5,marginBottom:13},
-  adminSettingsRow:{flexDirection:'row',alignItems:'center',gap:12,
-    paddingVertical:13,borderTopWidth:1,borderTopColor:colors.border},
-  adminSettingsIcon:{width:40,height:40,borderRadius:12,backgroundColor:'#F3ECE5',
-    alignItems:'center',justifyContent:'center'},
-  adminSettingsRowTitle:{color:colors.ink,fontSize:14,fontWeight:'700'},
-  adminSettingsRowCaption:{color:colors.mocha,fontSize:12,marginTop:4,lineHeight:17},
-  adminQuickOverlay:{position:'absolute',right:20,bottom:18,alignItems:'flex-end',
-    zIndex:50,elevation:8},
-  adminFab:{width:58,height:58,borderRadius:29,backgroundColor:'#604736',
-    alignItems:'center',justifyContent:'center',shadowColor:'#281B16',
-    shadowOpacity:0.28,shadowRadius:13,shadowOffset:{width:0,height:7},elevation:7},
-  adminQuickMenu:{marginBottom:13,backgroundColor:colors.white,
-    borderRadius:17,borderWidth:1,borderColor:colors.border,minWidth:225,
-    paddingHorizontal:7,paddingVertical:7,shadowColor:'#3B2B22',
-    shadowOpacity:0.14,shadowRadius:15,shadowOffset:{width:0,height:5},elevation:6},
-  adminQuickItem:{flexDirection:'row',alignItems:'center',gap:12,
-    paddingHorizontal:13,paddingVertical:14,borderRadius:11},
-  adminQuickLabel:{color:colors.ink,fontWeight:'700',fontSize:13},
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, marginTop: 10 },
-  homeGreetingHeader: { flexDirection: 'row', alignItems: 'center',
-    gap: 13, marginBottom: 27, marginTop: 8, minHeight: 70 },
-  greetingAvatarButton: { height: 66, width: 66, borderRadius: 33,
-    backgroundColor: colors.nude, justifyContent: 'center',
-    alignItems: 'center', overflow: 'hidden' },
-  greetingAvatarImage: { width: 66, height: 66, borderRadius: 33 },
-  greetingTextBlock: { flex: 1, minWidth: 0, justifyContent: 'center' },
-  greetingDay: { color: colors.muted, fontSize: 17, fontWeight: '400', marginBottom: 2 },
-  greetingFullName: { color: colors.ink, fontSize: 27, fontWeight: '700' },
-  homeBellButton: { width: 62, height: 62, backgroundColor: colors.white,
-    borderRadius: 31, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOpacity: 0.11, shadowRadius: 11,
-    shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-  homeBellBadge: { position: 'absolute', right: 8, top: 8,
-    minWidth: 20, height: 20, borderRadius: 10, backgroundColor: homeColors.bronze,
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-  homeBellBadgeText: { color: colors.white, fontSize: 10, fontWeight: '700' },
-  pageHeader: { paddingHorizontal: 24, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.white },
-  pageTitle: { fontSize: 20, fontWeight: 'bold', color: colors.ink, marginBottom: 4 },
-  greeting: { fontSize: 22, fontWeight: '700', color: colors.ink, marginBottom: 4 },
-  subtitle: { fontSize: 14, color: colors.muted },
-  profileIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.nude, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
-  homeAvatar: { width: 44, height: 44, borderRadius: 22 },
-  loyaltyCard: { backgroundColor: colors.nude, borderRadius: 20, padding: 24, marginBottom: 24 },
-  loyaltyHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  loyaltyBrand: { fontSize: 12, letterSpacing: 2, fontWeight: '600', color: colors.ink },
-  pointsValue: { fontSize: 48, fontWeight: '300', color: colors.ink, lineHeight: 52 },
-  pointsLabel: { fontSize: 16, fontWeight: '500', color: colors.ink, marginBottom: 24 },
-  pointsSubtitle: { fontSize: 12, color: '#5C5C5C' },
-  guestCard: { backgroundColor: colors.nude, borderRadius: 18, padding: 21, marginBottom: 22 },
-  guestCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  guestCardTitle: { color: colors.ink, fontWeight: '700', fontSize: 17, flex: 1 },
-  guestCardText: { color: colors.mocha, fontSize: 13, lineHeight: 21 },
-  guestCardButton: { backgroundColor: colors.white, borderRadius: 12, padding: 14, marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  guestCardButtonText: { color: colors.mocha, fontWeight: '700', fontSize: 14 },
-  primaryButton: { backgroundColor: colors.ink, flexDirection: 'row', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 32 },
-  primaryButtonText: { color: colors.background, fontSize: 16, fontWeight: '600', marginRight: 8 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: colors.ink, marginBottom: 16 },
-  homeSectionHeading: { flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 17, marginTop: 7 },
-  homeSectionLabel: { alignItems: 'flex-start' },
-  homeSectionTitle: { fontSize: 20, fontWeight: '700', color: colors.ink },
-  homeSectionAccent: { width: 38, height: 3, backgroundColor: colors.mocha, borderRadius: 3, marginTop: 7 },
-  homeSectionLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 3 },
-  homeSectionLinkText: { color: colors.mocha, fontSize: 13, fontWeight: '600' },
-  homeServicesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
-    rowGap: 12, marginBottom: 15 },
-  homeServiceCard: { width: '48%', minHeight: 124, backgroundColor: colors.white,
-    borderWidth: 1, borderColor: colors.border, borderRadius: 16,
-    padding: 15, justifyContent: 'space-between' },
-  homeServiceEmoji: { fontSize: 28, lineHeight: 32, alignSelf: 'flex-start' },
-  homeServiceName: { color: colors.ink, fontSize: 15, fontWeight: '700', marginTop: 11 },
-  homeServiceMeta: { color: colors.mocha, fontSize: 12, marginTop: 5 },
-  homeInspirationsSection: { marginTop: 7, marginBottom: 23 },
-  homeInspirationCarousel: { gap: 12, paddingBottom: 2 },
-  homeInspirationCard: { width: 157, backgroundColor: colors.white,
-    borderRadius: 14, borderColor: colors.border, borderWidth: 1, overflow: 'hidden' },
-  homeInspirationImage: { width: '100%', height: 151, backgroundColor: colors.nude },
-  homeInspirationName: { paddingHorizontal: 10, paddingVertical: 10,
-    color: colors.ink, fontSize: 12, fontWeight: '600' },
-  homeGalleryMessage: { color: colors.mocha, fontSize: 13, paddingVertical: 14 },
-  homeNailBookButton: { justifyContent: 'center', marginTop: -13, marginBottom: 10 },
-  serviceModalOverlay: { flex: 1, backgroundColor: 'rgba(28, 25, 23, 0.62)',
-    alignItems: 'center', justifyContent: 'center', padding: 16 },
-  serviceModalCard: { width: '100%', maxWidth: 520, maxHeight: '88%',
-    borderRadius: 22, backgroundColor: colors.white, overflow: 'hidden',
-    shadowColor: '#000000', shadowOpacity: 0.14, shadowRadius: 22, elevation: 12 },
-  serviceModalHeader: { flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', gap: 10, paddingHorizontal: 20, paddingVertical: 17,
-    borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.background },
-  serviceModalHeading: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  serviceModalIcon: { width: 42, height: 42, borderRadius: 13,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.nude },
-  serviceModalTitle: { fontSize: 20, fontWeight: '700', color: colors.ink },
-  serviceModalSubtitle: { marginTop: 4, fontSize: 12, color: colors.mocha },
-  serviceModalClose: { width: 38, height: 38, alignItems: 'center',
-    justifyContent: 'center', borderRadius: 19, backgroundColor: colors.nude },
-  serviceModalScroll: { flexShrink: 1 },
-  serviceModalFields: { paddingHorizontal: 20, paddingTop: 19, paddingBottom: 12 },
-  serviceModalField: { marginBottom: 16 },
-  serviceModalFieldLabel: { fontSize: 13, fontWeight: '700', color: colors.ink, marginBottom: 8 },
-  serviceModalInput: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: colors.ink, minHeight: 48 },
-  serviceModalTextarea: { minHeight: 86 },
-  serviceModalActive: { flexDirection: 'row', gap: 12, alignItems: 'center',
-    padding: 13, borderRadius: 13, backgroundColor: colors.background,
-    borderWidth: 1, borderColor: colors.border, marginBottom: 7 },
-  serviceModalActiveTitle: { fontSize: 14, color: colors.ink, fontWeight: '700' },
-  serviceModalActiveHint: { fontSize: 12, color: colors.mocha, marginTop: 3 },
-  serviceModalErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: '#FFF2F1', padding: 12, borderRadius: 10, marginTop: 10 },
-  serviceModalErrorText: { flex: 1, color: '#B42318', fontSize: 12, lineHeight: 18 },
-  serviceModalActions: { flexDirection: 'row', gap: 10, paddingHorizontal: 20,
-    paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border },
-  serviceModalCancel: { flex: 1, borderRadius: 12, borderWidth: 1,
-    borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
-  serviceModalCancelText: { fontSize: 14, color: colors.mocha, fontWeight: '700' },
-  serviceModalSave: { flex: 1.5, flexDirection: 'row', gap: 7, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', paddingVertical: 14, backgroundColor: colors.ink },
-  serviceModalSaveText: { color: colors.white, fontSize: 14, fontWeight: '700' },
-  servicesGrid: { gap: 12 },
-  simpleServiceCard: { padding: 16, backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
-  serviceTitle: { fontSize: 15, fontWeight: '600', color: colors.ink, marginBottom: 4 },
-  serviceDetails: { fontSize: 13, color: colors.muted },
-  bookingCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
-  bookingCardSelected: { borderColor: colors.ink, backgroundColor: colors.background },
-  radioSelected: { height: 20, width: 20, borderRadius: 10, borderWidth: 1, borderColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
-  radioDot: { height: 10, width: 10, borderRadius: 5, backgroundColor: colors.ink },
-  calendarCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 12, paddingTop: 14, paddingBottom: 18 },
-  calendarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
-  calendarArrow: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
-  calendarMonthTitle: { fontSize: 17, fontWeight: '700', color: colors.ink },
-  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  calendarCell: { width: '14.2857%', height: 47, justifyContent: 'center', alignItems: 'center' },
-  calendarWeekday: { color: colors.mocha, fontWeight: '700', fontSize: 12 },
-  calendarDay: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  calendarDayEnabled: { backgroundColor: '#F2EDE8' },
-  calendarDaySelected: { backgroundColor: colors.ink },
-  calendarDayText: { color: colors.ink, fontSize: 14, fontWeight: '500' },
-  calendarDayDisabledText: { color: '#C7C0BA' },
-  calendarDaySelectedText: { color: colors.white, fontWeight: '700' },
-  calendarHint: { textAlign: 'center', color: colors.muted, fontSize: 11, marginTop: 14 },
-  timeBox: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: colors.white, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
-  timeBoxSelected: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: colors.ink, borderRadius: 8 },
-  optionText: { color: colors.ink },
-  optionSelectedText: { color: colors.white, fontWeight: 'bold' },
-  footerBooking: { padding: 24, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border },
-  confirmButton: { backgroundColor: colors.ink, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
-  confirmButtonText: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 16 },
-  imageCard: { width: imageSize, height: imageSize * 1.3, borderRadius: 12, overflow: 'hidden', backgroundColor: colors.nude },
-  mockImage: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.nude },
-  adminStatCard: { flex: 1, backgroundColor: colors.white, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
-  adminStatLabel: { fontSize: 12, color: colors.muted },
-  adminStatValue: { fontSize: 20, fontWeight: 'bold', color: colors.ink, marginTop: 5 },
-  adminAgendaCard: { backgroundColor: colors.white, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
-  adminTabs: { flexDirection: 'row', backgroundColor: colors.nude, borderRadius: 12, padding: 4, marginBottom: 21, gap: 3 },
-  adminTab: { flex: 1, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
-  adminTabActive: { backgroundColor: colors.white },
-  adminTabText: { fontSize: 13, fontWeight: '600', color: colors.mocha },
-  adminTabTextActive: { color: colors.ink, fontWeight: '700' },
-  bottomNav: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border, paddingBottom: Platform.OS === 'ios' ? 24 : 12 },
-  navItem: { alignItems: 'center', minWidth: 55 },
-  navText: { fontSize: 10, color: colors.muted, marginTop: 4 },
-  navTextActive: { color: homeColors.brown, fontWeight: 'bold' },
-  adminAction: { color: colors.mocha, fontWeight: '700' },
-  successText: { color: '#247047', fontWeight: '600' },
-  confirmationBackdrop: { flex: 1, backgroundColor: 'rgba(25, 25, 25, 0.58)', justifyContent: 'center', alignItems: 'center', padding: 22 },
-  confirmationCard: { width: '100%', maxWidth: 420, backgroundColor: colors.white, borderRadius: 22, paddingHorizontal: 24, paddingVertical: 29, alignItems: 'center' },
-  confirmationIconCircle: { width: 76, height: 76, backgroundColor: '#EAF6EF', borderRadius: 38, justifyContent: 'center', alignItems: 'center', marginBottom: 18 },
-  confirmationTitle: { color: colors.ink, fontSize: 21, fontWeight: '700', textAlign: 'center', marginBottom: 13 },
-  confirmationMessage: { color: colors.ink, fontSize: 15, textAlign: 'center', lineHeight: 23, marginBottom: 12 },
-  confirmationHint: { color: colors.mocha, fontSize: 14, textAlign: 'center', lineHeight: 21, marginBottom: 24 },
-  confirmationPrimaryButton: { backgroundColor: colors.ink, borderRadius: 12, paddingVertical: 15, paddingHorizontal: 16, flexDirection: 'row', gap: 10, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
-  confirmationPrimaryText: { color: colors.white, fontWeight: '700', fontSize: 15 },
-  confirmationSecondaryButton: { marginTop: 10, paddingVertical: 13, paddingHorizontal: 10 },
-  confirmationSecondaryText: { color: colors.mocha, fontWeight: '600', fontSize: 13 },
-  studioInfoCard: { marginTop: 27, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 19, backgroundColor: colors.white, padding: 20 },
-  studioInfoHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
-  studioInfoLogo: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.nude,
-    alignItems: 'center', justifyContent: 'center' },
-  studioInfoHeading: { color: colors.ink, fontWeight: '700', fontSize: 17 },
-  studioInfoTagline: { color: colors.mocha, fontSize: 12, marginTop: 4 },
-  studioInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 10 },
-  studioInfoRowIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#F5F0EB',
-    alignItems: 'center', justifyContent: 'center' },
-  studioInfoRowText: { flex: 1, minWidth: 0 },
-  studioInfoLabel: { color: colors.muted, fontSize: 11, marginBottom: 4 },
-  studioInfoValue: { color: colors.ink, fontSize: 14, fontWeight: '600' },
-  studioInfoAddress: { color: colors.mocha, fontSize: 12, marginTop: 3 },
-  studioInfoDivider: { height: 1, backgroundColor: colors.border, marginVertical: 5 },
-  studioInfoFooter: { marginTop: 13, color: colors.mocha, textAlign: 'center', fontSize: 11 },
-  logoutButton: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: 8, paddingVertical: 14, marginTop: 26 },
-  logoutText: { color: colors.mocha, fontWeight: '600' },
-  loadingPage: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-  loginPage: { flex: 1, backgroundColor: colors.background },
-  loginContent: { flexGrow: 1, justifyContent: 'center', padding: 28, paddingVertical: 50 },
-  loginLogo: { width: 64, height: 64, alignSelf: 'center', borderRadius: 32, backgroundColor: colors.nude, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
-  loginTitle: { fontSize: 29, fontWeight: '700', textAlign: 'center', color: colors.ink, marginBottom: 8 },
-  loginSubtitle: { fontSize: 14, textAlign: 'center', color: colors.muted, marginBottom: 35 },
-  inputLabel: { color: colors.ink, fontWeight: '600', marginBottom: 7 },
-  loginInput: { backgroundColor: colors.white, borderColor: colors.border, borderWidth: 1, padding: 16, borderRadius: 12, marginBottom: 18, fontSize: 16 },
-  loginError: { color: '#B42318', marginBottom: 16 },
-  loginButton: { backgroundColor: colors.ink, padding: 18, borderRadius: 14, alignItems: 'center', justifyContent: 'center', minHeight: 56 },
-  loginButtonText: { color: colors.white, fontWeight: '700', fontSize: 16 },
-  loginFootnote: { color: colors.muted, textAlign: 'center', fontSize: 12, lineHeight: 18, marginTop: 22 },
-});
