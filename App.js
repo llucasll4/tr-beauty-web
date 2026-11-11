@@ -2,14 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
-  Image,
-  Linking,
   Modal,
-  Platform,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -42,7 +37,7 @@ import BookingWizard from './BookingWizard';
 import {brandColors as colors, homeColors} from './theme/tokens';
 import styles from './appStyles';
 import HomeScreen from './HomeScreen';
-import {brazilClock,brazilDate,localDateKey,futureDates,readableDate,WEEKDAYS,monthLabel,offsetMonth,initialBookableDate,buildCalendar} from './utils/calendar';
+import {localDateKey,futureDates,initialBookableDate,buildCalendar} from './utils/calendar';
 
 // Cores originais importadas de uma fonte de verdade compartilhada.
 
