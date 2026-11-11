@@ -43,64 +43,10 @@ import AdminWhatsApp from './AdminWhatsApp';
 import BookingWizard from './BookingWizard';
 import {brandColors as colors, homeColors} from './theme/tokens';
 import styles from './appStyles';
+import {emojiForHomeService} from './utils/services';
+import {brazilClock,brazilDate,localDateKey,futureDates,readableDate,WEEKDAYS,monthLabel,offsetMonth,initialBookableDate,buildCalendar} from './utils/calendar';
 
 // Cores originais importadas de uma fonte de verdade compartilhada.
-
-// Emojis relacionados a unhas para os cards, sem associar gel a gotas d'água.
-const emojiForHomeService = (name = '') => {
-  const label = String(name).toLocaleLowerCase('pt-BR');
-  if (label.includes('nail art') || label.includes('decora') || label.includes('arte')) return '🎨';
-  if (label.includes('manuten') || label.includes('alongamento') || label.includes('gel') ||
-      label.includes('esmalta') || label.includes('unha') || label.includes('banho')) return '💅';
-  return '✨';
-};
-const brazilClock = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
-const brazilDate = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
-function localDateKey(date) {
-  const parts = Object.fromEntries(brazilDate.formatToParts(date).map(x => [x.type, x.value]));
-  return `${parts.year}-${parts.month}-${parts.day}`;
-}
-function futureDates() {
-  const today = localDateKey(new Date());
-  const base = new Date(`${today}T12:00:00Z`);
-  return Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(base.getTime() + i * 86400000);
-    return { key: d.toISOString().slice(0, 10), label: d.toLocaleDateString('pt-BR', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: '2-digit' }) };
-  });
-}
-const readableDate = (iso) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-const monthLabel = (monthKey) => {
-  const [y, m] = monthKey.split('-').map(Number);
-  const label = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('pt-BR', {
-    timeZone: 'UTC', month: 'long', year: 'numeric',
-  });
-  return label.charAt(0).toUpperCase() + label.slice(1);
-};
-const offsetMonth = (monthKey, offset) => {
-  const [y, m] = monthKey.split('-').map(Number);
-  const newDate = new Date(Date.UTC(y, m - 1 + offset, 1));
-  return newDate.toISOString().slice(0, 7);
-};
-const initialBookableDate = () => futureDates().find(({ key }) => {
-  const weekday = new Date(`${key}T12:00:00Z`).getUTCDay();
-  return weekday >= 2 && weekday <= 6;
-})?.key || localDateKey(new Date());
-function buildCalendar(monthKey, allowedDateKeys, openWeekdays = null) {
-  const [year, month] = monthKey.split('-').map(Number);
-  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
-  const firstColumn = (firstWeekday + 6) % 7; // Segunda-feira primeiro
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const cells = Array.from({ length: firstColumn }, () => null);
-  for (let day = 1; day <= daysInMonth; day++) {
-    const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-    cells.push({ key, day, enabled: allowedDateKeys.has(key) && (!openWeekdays || openWeekdays.has(weekday)) });
-  }
-  while (cells.length % 7) cells.push(null);
-  return cells;
-}
 
 function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home', initialServiceId = null }) {
   const [currentScreen, setCurrentScreen] = useState(isAdmin ? 'Admin' : initialScreen);
