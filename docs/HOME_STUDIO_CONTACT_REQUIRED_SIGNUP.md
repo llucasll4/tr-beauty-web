@@ -13,7 +13,7 @@ A tela **Criar minha conta** exige os quatro campos: **Nome completo**, **Celula
 
 ## Rodapé da Home
 No final da tela inicial, após os serviços e o botão Sair (quando houver), o cartão de informações da TR Beauty Concept mostra:
-- **WhatsApp da Talita:** (11) 94690-1167 — toque para abrir diretamente a conversa em `https://wa.me/5511946901167`.
+- **WhatsApp do Studio:** (11) 94690-1167 — toque para abrir diretamente a conversa em `https://wa.me/5511946901167`.
 - **Instagram:** `@__thalitanaildesign` — toque para abrir `https://www.instagram.com/__thalitanaildesign?cplk=c3A4emlocGRxOXEx`.
 - **Endereço:** Rua Santa Cruz, 537, Diadema – SP — toque para abrir a busca do endereço no Google Maps.
 
@@ -36,3 +36,6 @@ Não reaplicar a migração em produção.
 
 ## Observação
 A obrigação de preencher telefone não equivale à verificação de propriedade do número, que precisaria de confirmação via SMS ou outro serviço.
+
+## Ícones dos serviços na Home
+Os cartões de serviços exibem emojis ligados a Nail Design: 💅 para manicure/esmaltação/gel/alongamento/manutenção, 🎨 para Nail Art/decorações e ✨ para demais serviços. A antiga gota dos serviços em gel não é mais exibida. As cores, os preços e as durações permanecem como antes.
