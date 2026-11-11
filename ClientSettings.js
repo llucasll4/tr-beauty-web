@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import { getVipProgress } from './vipProgress';
 import ProfileScreen from './ProfileScreen';
+import PrivacyNotice from './PrivacyNotice';
 
 const C = {
   background:'#F9F5F0', white:'#FFFFFF', ink:'#30231E', brown:'#402816',
@@ -85,7 +86,9 @@ export default function ClientSettings({
   const [birthMonth,setBirthMonth]=useState('');
   const [newPassword,setNewPassword]=useState('');
   const [passwordConfirm,setPasswordConfirm]=useState('');
-  const [deletionPending,setDeletionPending]=useState(false);
+  const [deletionRequest,setDeletionRequest]=useState(null);
+  const [privacyOpen,setPrivacyOpen]=useState(false);
+  const deletionPending=['pending','in_review'].includes(deletionRequest?.status);
   const load = useCallback(async()=>{
     if(!user?.id)return;
     setLoading(true);setLoadError('');
@@ -101,7 +104,8 @@ export default function ClientSettings({
       supabase.rpc('get_my_vip_summary'),
       supabase.from('vip_settings').select('silver_points,gold_points').eq('id',1).maybeSingle(),
       supabase.from('account_deletion_requests')
-        .select('id').eq('user_id',user.id).eq('status','pending').limit(1),
+        .select('id,status,response_note,created_at')
+        .eq('user_id',user.id).order('created_at',{ascending:false}).limit(1).maybeSingle(),
     ]);
     if(p.error||b.error||c.error||n.error||v.error||settings.error||deleteReq.error){
       setLoadError('Algumas preferências não puderam ser consultadas. Toque em atualizar.');
@@ -115,7 +119,7 @@ export default function ClientSettings({
       whatsapp_consented_at:n.data?.whatsapp_consented_at||null,
     });
     if(!v.error&&!settings.error)setVip(getVipProgress(v.data,settings.data));
-    if(!deleteReq.error)setDeletionPending(!!deleteReq.data?.length);
+    if(!deleteReq.error)setDeletionRequest(deleteReq.data||null);
     setLoading(false);
   },[user?.id]);
   useEffect(()=>{load();},[load]);
@@ -220,14 +224,14 @@ export default function ClientSettings({
         .insert({user_id:user.id});
       if(error){
         if(error.code==='23505'){
-          setDeletionPending(true);
+          setDeletionRequest({status:'pending'});
           setDialog(null);
           setMessage('Já existe uma solicitação de exclusão pendente.');
           return;
         }
         throw error;
       }
-      setDeletionPending(true);
+      setDeletionRequest({status:'pending'});
       setDialog(null);
       setMessage('Solicitação registrada. Sua conta permanece ativa até a análise do estúdio.');
     }catch(err){setMessage('Não foi possível solicitar a exclusão: '+(err?.message||'erro desconhecido'));}
@@ -338,6 +342,9 @@ export default function ClientSettings({
           onPress={()=>openSupport()}/>
         <SettingRow icon="document-text-outline" title="Política de cancelamento"
           onPress={()=>showDialog('cancellation')}/>
+        <SettingRow icon="shield-checkmark-outline" title="Aviso de Privacidade"
+          subtitle="Como seus dados são usados e protegidos"
+          onPress={()=>setPrivacyOpen(true)}/>
         <SettingRow icon="key-outline" title="Alterar senha"
           onPress={()=>showDialog('password')}/>
         <SettingRow icon="trash-outline"
@@ -430,10 +437,16 @@ export default function ClientSettings({
             </>}
             {dialog==='deletion'&&<>
               <Text style={s.text}>
-                {deletionPending?'Você já tem uma solicitação de exclusão pendente.':
-                  'Se solicitar a exclusão, o estúdio receberá o pedido para análise. Sua conta e seus agendamentos não serão apagados imediatamente.'}
+                {deletionPending
+                  ? (deletionRequest?.status==='in_review'
+                    ? 'Sua solicitação está em análise pelo estúdio.'
+                    : 'Sua solicitação foi registrada e aguarda análise.')
+                  : 'Ao solicitar a exclusão, o estúdio receberá seu pedido para avaliação. Sua conta e seus agendamentos não serão apagados automaticamente.'}
               </Text>
-              <Text style={s.small}>Para saber como seus dados serão tratados, contate o estúdio pelo WhatsApp.</Text>
+              {!!deletionRequest?.response_note && <Text style={s.text}>
+                Última resposta registrada: {deletionRequest.response_note}
+              </Text>}
+              <Text style={s.small}>A análise leva em conta eventuais obrigações legais de conservação. Confira o Aviso de Privacidade ou fale com o estúdio.</Text>
               {!deletionPending&&<TouchableOpacity onPress={requestDeletion} disabled={busy}
                 style={[s.modalButton,{backgroundColor:C.red}]}>
                 <Text style={s.modalButtonText}>Registrar solicitação de exclusão</Text>
@@ -445,6 +458,7 @@ export default function ClientSettings({
         </View>
       </View>
     </Modal>
+    <PrivacyNotice visible={privacyOpen} onClose={()=>setPrivacyOpen(false)}/>
   </View>;
 }
 
