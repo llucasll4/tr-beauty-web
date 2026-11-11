@@ -5,7 +5,7 @@ import { supabase } from './supabase';
 import { getVipProgress } from './vipProgress';
 
 // Cores amostradas da referência da Home; não altera cálculos nem saldos.
-const C = { ink: '#30231E', mocha: '#A1754D', nude: '#EBE3D9', muted: '#64574F', brown: '#402816', gold: '#B58B55' };
+const C = { ink: '#30231E', mocha: '#A1754D', nude: '#F0E8DE', muted: '#64574F', brown: '#402816', gold: '#C5A06C' };
 const fmtDate = v => new Date(v).toLocaleDateString('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric',
 });
@@ -78,7 +78,11 @@ export default function LoyaltyCard({ userId, refreshSignal = 0, onOpenDetails }
       {loading ? <ActivityIndicator color={C.mocha} style={{ marginVertical: 20 }}/> : (
         <>
           <Text style={s.balance}>{summary ? digits(balance) : '—'}</Text>
-          <Text style={s.label}>TR Points disponíveis</Text>
+          <View style={s.pointsLabelRow}>
+            <Text style={s.label}>TR Points</Text>
+            <Ionicons name="star" size={22} color={C.gold} style={s.labelStar}
+              accessibilityLabel="Estrela dourada"/>
+          </View>
           {summary?.enabled && vip && <>
             <View style={s.levelRow}>
               <Text style={s.levelLabel}>NÍVEL {vip.tier.toLocaleUpperCase('pt-BR')}</Text>
@@ -138,17 +142,23 @@ export default function LoyaltyCard({ userId, refreshSignal = 0, onOpenDetails }
 }
 
 const s = StyleSheet.create({
-  card: { backgroundColor: C.nude, borderRadius: 20, padding: 24, marginBottom: 24 },
+  card: { backgroundColor: C.nude, borderRadius: 20, padding: 24, marginBottom: 24,
+    borderWidth: 1, borderColor: '#E9DCCC',
+    shadowColor: '#B88E63', shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.11, shadowRadius: 15, elevation: 3 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   brand: { fontSize: 12, letterSpacing: 2, fontWeight: '600', color: C.ink },
   balance: { fontSize: 48, fontWeight: '300', color: C.ink, lineHeight: 54 },
-  label: { fontSize: 16, fontWeight: '500', color: C.mocha, marginBottom: 17 },
+  pointsLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 17 },
+  label: { fontSize: 16, fontWeight: '500', color: C.mocha },
+  labelStar: { textShadowColor: '#F8E4BA', textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4 },
   levelRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
     alignItems: 'center', gap: 7, marginBottom: 10 },
   levelLabel: { color: C.ink, fontWeight: '700', fontSize: 12, letterSpacing: 0.6 },
   levelNext: { color: C.mocha, fontSize: 12, fontWeight: '600' },
-  track: { backgroundColor: '#D8CEC5', height: 7, borderRadius: 4, overflow: 'hidden' },
-  fill: { backgroundColor: '#AA7C4D', height: 7, borderRadius: 4 },
+  track: { backgroundColor: '#E1D4C7', height: 7, borderRadius: 4, overflow: 'hidden' },
+  fill: { backgroundColor: '#BD925E', height: 7, borderRadius: 4 },
   goal: { color: C.ink, fontWeight: '700', fontSize: 12, marginTop: 12, lineHeight: 19 },
   helper: { fontSize: 12, color: C.muted, marginTop: 6, lineHeight: 18 },
   note: { fontSize: 11, color: C.mocha, lineHeight: 17, marginTop: 10 },
@@ -158,7 +168,11 @@ const s = StyleSheet.create({
   historyRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   historyDate: { fontSize: 12, color: C.muted },
   historyPoints: { fontSize: 12, color: '#397C59', fontWeight: '700' },
-  details: { backgroundColor: C.brown, paddingVertical: 13, paddingHorizontal: 15, borderRadius: 11, marginTop: 18, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 9 },
+  details: { backgroundColor: C.brown, paddingVertical: 13, paddingHorizontal: 15,
+    borderRadius: 11, marginTop: 18, flexDirection: 'row',
+    justifyContent: 'center', alignItems: 'center', gap: 9,
+    shadowColor: '#8D5B34', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.13, shadowRadius: 8, elevation: 2 },
   detailsText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   refresh: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 15, paddingVertical: 5 },
   refreshText: { marginLeft: 6, color: C.mocha, fontSize: 12, fontWeight: '700' },
