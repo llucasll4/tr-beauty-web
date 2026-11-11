@@ -49,13 +49,13 @@ const colors = {
   border: '#EBE5DF',
 };
 
-// Ícones neutros da marca para os cards de serviços cadastrados.
-const iconForHomeService = (name = '') => {
-  const label = name.toLocaleLowerCase('pt-BR');
-  if (label.includes('manuten')) return 'construct-outline';
-  if (label.includes('nail art') || label.includes('decora') || label.includes('arte')) return 'color-palette-outline';
-  if (label.includes('gel') || label.includes('banho')) return 'water-outline';
-  return 'sparkles-outline';
+// Emojis relacionados a unhas para os cards, sem associar gel a gotas d'água.
+const emojiForHomeService = (name = '') => {
+  const label = String(name).toLocaleLowerCase('pt-BR');
+  if (label.includes('nail art') || label.includes('decora') || label.includes('arte')) return '🎨';
+  if (label.includes('manuten') || label.includes('alongamento') || label.includes('gel') ||
+      label.includes('esmalta') || label.includes('unha') || label.includes('banho')) return '💅';
+  return '✨';
 };
 const brazilClock = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
 const brazilDate = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -733,7 +733,9 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
               if (user) setBookingView('new');
               setCurrentScreen('Booking');
             }}>
-            <Ionicons name={iconForHomeService(service.name)} size={27} color={colors.mocha}/>
+            <Text style={styles.homeServiceEmoji} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              {emojiForHomeService(service.name)}
+            </Text>
             <Text style={styles.homeServiceName} numberOfLines={2}>{service.name}</Text>
             <Text style={styles.homeServiceMeta}>
               {money(service.price)} · {service.duration_minutes} min
@@ -812,14 +814,14 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         </View>
 
         <TouchableOpacity accessibilityRole="link"
-          accessibilityLabel="Conversar com a Talita pelo WhatsApp: (11) 94690-1167"
+          accessibilityLabel="Conversar com o Studio pelo WhatsApp: (11) 94690-1167"
           onPress={() => Linking.openURL('https://wa.me/5511946901167')}
           style={styles.studioInfoRow}>
           <View style={styles.studioInfoRowIcon}>
             <Ionicons name="logo-whatsapp" size={20} color={colors.mocha}/>
           </View>
           <View style={styles.studioInfoRowText}>
-            <Text style={styles.studioInfoLabel}>WhatsApp da Talita</Text>
+            <Text style={styles.studioInfoLabel}>WhatsApp do Studio</Text>
             <Text style={styles.studioInfoValue}>(11) 94690-1167</Text>
           </View>
           <Ionicons name="arrow-up-forward-outline" size={17} color={colors.mocha}/>
@@ -1310,6 +1312,7 @@ const styles = StyleSheet.create({
   homeServiceCard: { width: '48%', minHeight: 124, backgroundColor: colors.white,
     borderWidth: 1, borderColor: colors.border, borderRadius: 16,
     padding: 15, justifyContent: 'space-between' },
+  homeServiceEmoji: { fontSize: 28, lineHeight: 32, alignSelf: 'flex-start' },
   homeServiceName: { color: colors.ink, fontSize: 15, fontWeight: '700', marginTop: 11 },
   homeServiceMeta: { color: colors.mocha, fontSize: 12, marginTop: 5 },
   homeInspirationsSection: { marginTop: 7, marginBottom: 23 },
