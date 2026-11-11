@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Modal, Platform, ScrollView, StyleSheet, Text,
+  ActivityIndicator, Modal, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +38,31 @@ function dayLabel(value) {
   return d.toLocaleDateString('pt-BR', {timeZone:'UTC',day:'2-digit',month:'short',weekday:'short'});
 }
 const STEPS = ['Cliente','Serviço','Data e hora','Confirmar'];
+const WEEKDAYS = ['S','T','Q','Q','S','S','D']; // Seg → Dom, igual ao calendário de reservas
+function monthName(monthKey) {
+  const [year,month]=monthKey.split('-').map(Number);
+  const label=new Date(Date.UTC(year,month-1,1)).toLocaleDateString('pt-BR',{
+    timeZone:'UTC',month:'long',year:'numeric',
+  });
+  return label.charAt(0).toUpperCase()+label.slice(1);
+}
+function shiftMonth(monthKey,offset) {
+  const [year,month]=monthKey.split('-').map(Number);
+  return new Date(Date.UTC(year,month-1+offset,1)).toISOString().slice(0,7);
+}
+function getMonthCells(monthKey,today,maxDay,openWeekdays) {
+  const [year,month]=monthKey.split('-').map(Number);
+  const startOffset=(new Date(Date.UTC(year,month-1,1)).getUTCDay()+6)%7;
+  const daysInMonth=new Date(Date.UTC(year,month,0)).getUTCDate();
+  const cells=Array.from({length:startOffset},()=>null);
+  for(let number=1;number<=daysInMonth;number++){
+    const key=year+'-'+pad(month)+'-'+pad(number);
+    const weekday=new Date(Date.UTC(year,month-1,number)).getUTCDay();
+    cells.push({key,day:number,enabled:key>=today&&key<=maxDay&&openWeekdays.has(weekday)});
+  }
+  while(cells.length%7)cells.push(null);
+  return cells;
+}
 
 export default function AdminManualBooking({
   services=[], visible=true, onClose=()=>{}, onShowAgenda=()=>{}, onBooked=()=>{},
@@ -52,6 +77,8 @@ export default function AdminManualBooking({
   const activeServices=useMemo(()=>services.filter(s=>s.active),[services]);
   const [serviceId,setServiceId]=useState(null);
   const [day,setDay]=useState(()=>dateKey(new Date()));
+  const [calendarMonth,setCalendarMonth]=useState(()=>dateKey(new Date()).slice(0,7));
+  const [openWeekdays,setOpenWeekdays]=useState(()=>new Set([2,3,4,5,6]));
   const [slots,setSlots]=useState([]);
   const [slot,setSlot]=useState(null);
   const [slotsLoading,setSlotsLoading]=useState(false);
@@ -69,13 +96,36 @@ export default function AdminManualBooking({
     d.setUTCDate(d.getUTCDate()+89);
     return d.toISOString().slice(0,10);
   },[today]);
-  const quickDays=useMemo(()=>{
+  const firstCalendarMonth=today.slice(0,7);
+  const lastCalendarMonth=maxDay.slice(0,7);
+  const calendarCells=useMemo(
+    ()=>getMonthCells(calendarMonth,today,maxDay,openWeekdays),
+    [calendarMonth,today,maxDay,openWeekdays]
+  );
+  useEffect(()=>{
+    if(!visible)return;
+    let active=true;
+    supabase.from('business_hours').select('weekday,enabled').eq('enabled',true)
+      .then(({data,error})=>{
+        if(active&&!error&&data?.length){
+          setOpenWeekdays(new Set(data.map(row=>Number(row.weekday))));
+        }
+      });
+    return()=>{active=false;};
+  },[visible]);
+  useEffect(()=>{
+    if(openWeekdays.has(new Date(day+'T12:00:00Z').getUTCDay()))return;
     const start=new Date(today+'T12:00:00Z');
-    return Array.from({length:14},(_,i)=>{
-      const d=new Date(start.getTime()+i*86400000);
-      return d.toISOString().slice(0,10);
-    });
-  },[today]);
+    for(let i=0;i<90;i++){
+      const candidate=new Date(start.getTime()+i*86400000);
+      const key=candidate.toISOString().slice(0,10);
+      if(key<=maxDay&&openWeekdays.has(candidate.getUTCDay())){
+        setDay(key);
+        setCalendarMonth(key.slice(0,7));
+        return;
+      }
+    }
+  },[day,today,maxDay,openWeekdays]);
   const selectedService=activeServices.find(s=>s.id===serviceId);
   const dayValid=validDate(day)&&day>=today&&day<=maxDay;
 
@@ -118,7 +168,9 @@ export default function AdminManualBooking({
     setStep(0);
     setSearch('');setClientQuery('');
     setSelectedClient(null);setServiceId(null);setSlot(null);
-    setDay(dateKey(new Date()));setNotes('');setSaveError('');
+    const current=dateKey(new Date());
+    setDay(current);setCalendarMonth(current.slice(0,7));
+    setNotes('');setSaveError('');
   }
   function close(){
     if(saving)return;
@@ -277,30 +329,53 @@ export default function AdminManualBooking({
                   <Text style={s.helper}>Horários disponíveis conforme a agenda real.</Text>
                 </View>
               </View>
-              <Text style={s.inputLabel}>Próximos dias</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                style={{marginBottom:14}} contentContainerStyle={s.quickDays}>
-                {quickDays.map(d=><TouchableOpacity key={d} accessibilityRole="button"
-                  accessibilityState={{selected:d===day}} onPress={()=>setDay(d)}
-                  style={[s.dayChip,day===d&&s.dayChipActive]}>
-                  <Text style={[s.dayChipText,day===d&&s.selectedText]}>{dayLabel(d)}</Text>
-                </TouchableOpacity>)}
-              </ScrollView>
-              <Text style={s.inputLabel}>Outra data (até 90 dias)</Text>
-              {Platform.OS==='web'?
-                React.createElement('input',{
-                  type:'date',value:day,min:today,max:maxDay,
-                  onChange:e=>setDay(e.target.value),
-                  'aria-label':'Escolher data do agendamento',
-                  style:{
-                    width:'100%',boxSizing:'border-box',border:'1px solid '+C.border,
-                    backgroundColor:C.white,borderRadius:11,padding:12,
-                    fontSize:15,color:C.ink,marginBottom:18,
-                  },
-                }):
-                <TextInput style={s.dateInput} value={day} onChangeText={setDay}
-                  placeholder="AAAA-MM-DD" maxLength={10} autoCapitalize="none"
-                  accessibilityLabel="Data do agendamento"/>}
+              <Text style={s.inputLabel}>Escolha o dia no calendário</Text>
+              <View style={s.calendar}>
+                <View style={s.calendarHeader}>
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel="Mês anterior"
+                    disabled={calendarMonth<=firstCalendarMonth}
+                    style={s.monthArrow}
+                    onPress={()=>setCalendarMonth(old=>shiftMonth(old,-1))}>
+                    <Ionicons name="chevron-back" size={20}
+                      color={calendarMonth<=firstCalendarMonth?C.border:C.ink}/>
+                  </TouchableOpacity>
+                  <Text style={s.monthTitle}>{monthName(calendarMonth)}</Text>
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel="Próximo mês"
+                    disabled={calendarMonth>=lastCalendarMonth}
+                    style={s.monthArrow}
+                    onPress={()=>setCalendarMonth(old=>shiftMonth(old,1))}>
+                    <Ionicons name="chevron-forward" size={20}
+                      color={calendarMonth>=lastCalendarMonth?C.border:C.ink}/>
+                  </TouchableOpacity>
+                </View>
+                <View style={s.dayGrid}>
+                  {WEEKDAYS.map((weekday,index)=><View key={index} style={s.dayCell}>
+                    <Text style={s.weekday}>{weekday}</Text>
+                  </View>)}
+                  {calendarCells.map((cell,index)=>
+                    <View key={cell?.key||'blank-'+index} style={s.dayCell}>
+                      {cell&&<TouchableOpacity accessibilityRole="button"
+                        accessibilityLabel={'Dia '+cell.day+' de '+monthName(calendarMonth)}
+                        accessibilityState={{disabled:!cell.enabled,selected:day===cell.key}}
+                        disabled={!cell.enabled}
+                        onPress={()=>{
+                          setDay(cell.key);
+                          setSlot(null);
+                          setSaveError('');
+                        }}
+                        style={[s.dayCircle,day===cell.key&&s.daySelected]}>
+                        <Text style={[s.dayLabel,!cell.enabled&&s.dayDisabled,
+                          day===cell.key&&s.dayLabelSelected]}>{cell.day}</Text>
+                      </TouchableOpacity>}
+                    </View>)}
+                </View>
+              </View>
+              <View style={s.chosenDateRow}>
+                <Ionicons name="calendar-outline" size={17} color={C.mocha}/>
+                <Text style={s.chosenDateText}>
+                  {dayValid?'Data selecionada: '+dayLabel(day):'Selecione uma data válida'}
+                </Text>
+              </View>
               {!dayValid&&<Text style={s.error}>Escolha uma data válida nos próximos 90 dias.</Text>}
               <View style={s.availabilityHeader}>
                 <Text style={s.inputLabel}>Horários disponíveis</Text>
@@ -460,14 +535,24 @@ const s=StyleSheet.create({
   clientName:{color:C.ink,fontWeight:'700',fontSize:14},
   clientSub:{color:C.muted,fontSize:12,marginTop:4},
   inputLabel:{fontSize:13,fontWeight:'700',color:C.ink,marginBottom:8},
-  quickDays:{gap:8,paddingBottom:3},
-  dayChip:{borderColor:C.border,borderWidth:1,borderRadius:11,
-    paddingVertical:11,paddingHorizontal:12},
-  dayChipActive:{backgroundColor:C.brown,borderColor:C.brown},
-  dayChipText:{fontSize:12,fontWeight:'700',color:C.mocha},
+  calendar:{backgroundColor:C.white,borderWidth:1,borderColor:C.border,
+    borderRadius:18,padding:14,marginBottom:10},
+  calendarHeader:{flexDirection:'row',justifyContent:'space-between',
+    alignItems:'center',marginBottom:13},
+  monthArrow:{width:34,height:34,alignItems:'center',justifyContent:'center'},
+  monthTitle:{fontSize:14,fontWeight:'700',color:C.ink},
+  dayGrid:{flexDirection:'row',flexWrap:'wrap'},
+  dayCell:{width:'14.2857%',height:43,alignItems:'center',justifyContent:'center'},
+  weekday:{fontSize:11,fontWeight:'600',color:C.muted},
+  dayCircle:{width:35,height:35,borderRadius:18,alignItems:'center',justifyContent:'center'},
+  daySelected:{backgroundColor:C.brown},
+  dayLabel:{fontSize:13,fontWeight:'500',color:C.ink},
+  dayDisabled:{color:'#C9C0B8'},
+  dayLabelSelected:{color:C.white,fontWeight:'700'},
+  chosenDateRow:{flexDirection:'row',alignItems:'center',gap:8,
+    paddingHorizontal:6,marginBottom:19},
+  chosenDateText:{fontSize:12,fontWeight:'600',color:C.mocha},
   selectedText:{color:C.white},
-  dateInput:{backgroundColor:C.white,borderColor:C.border,borderWidth:1,
-    padding:12,borderRadius:11,marginBottom:18,color:C.ink},
   availabilityHeader:{flexDirection:'row',justifyContent:'space-between',
     alignItems:'center',marginBottom:9},
   slots:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:16},
