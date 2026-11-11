@@ -23,24 +23,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      # Temporário: expor somente metadados públicos de dependências.
-      - name: Phase 2 temporary lockfile transport
-        if: github.head_ref == 'refactor/phase2-modular-ui-theme-20261111'
-        run: |
-          node - <<'NODE'
-          const fs=require('node:fs');
-          const crypto=require('node:crypto');
-          const bytes=fs.readFileSync('package-lock.json','utf8');
-          const minified=JSON.stringify(JSON.parse(bytes));
-          const digest=crypto.createHash('sha256').update(minified).digest('hex');
-          console.log('PHASE2_LOCK_SHA256:'+digest);
-          for(let i=0;i<minified.length;i+=32000){
-            console.log('PHASE2_LOCK_CHUNK:'+i+':'+minified.slice(i,i+32000));
-          }
-          console.log('PHASE2_LOCK_TOTAL:'+minified.length);
-          NODE
+      - name: Install dependencies (lockfile)
+        run: npm ci --no-audit --no-fund
       - name: Unit tests
         run: npm test
       - name: Build Expo web
