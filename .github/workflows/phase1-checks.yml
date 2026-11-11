@@ -12,7 +12,8 @@ permissions:
 jobs:
   app-checks:
     name: app-tests-and-build
-    runs-on: ubuntu-latest
+    # Pinned for Playwright 1.55 Chromium dependencies; ubuntu-latest now 26.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       # Dummy publishable values: NEVER expose credentials to GitHub Actions.
