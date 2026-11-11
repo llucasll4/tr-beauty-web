@@ -23,6 +23,7 @@ import CompletePhoneScreen from './CompletePhoneScreen';
 import { normalizeBrazilMobile } from './phoneUtils';
 import ProfileScreen from './ProfileScreen';
 import ClientSettings from './ClientSettings';
+import PrivacyNotice from './PrivacyNotice';
 import AdminAccountRequests from './AdminAccountRequests';
 import AdminCalendar from './AdminCalendar';
 import AdminCalendarBlocks from './AdminCalendarBlocks';
@@ -113,6 +114,7 @@ function buildCalendar(monthKey, allowedDateKeys, openWeekdays = null) {
 
 function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home', initialServiceId = null }) {
   const [currentScreen, setCurrentScreen] = useState(isAdmin ? 'Admin' : initialScreen);
+  const [privacyVisible,setPrivacyVisible]=useState(false);
   useEffect(() => {
     if(isAdmin && ['Booking','Profile','Points'].includes(currentScreen)) setCurrentScreen('Admin');
   },[isAdmin,currentScreen]);
@@ -942,6 +944,12 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         </TouchableOpacity>
       </View>
       <Text style={styles.studioInfoFooter}>Estúdio especializado em unhas 💅</Text>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Ler aviso de privacidade"
+        onPress={()=>setPrivacyVisible(true)} style={{alignSelf:'center',paddingVertical:14}}>
+        <Text style={{color:colors.mocha,fontSize:12,fontWeight:'700',textDecorationLine:'underline'}}>
+          Aviso de Privacidade
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 
@@ -1346,6 +1354,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           setAdminCalendarRefresh(value => value + 1);
         }}
       />}
+
+      <PrivacyNotice visible={privacyVisible} onClose={()=>setPrivacyVisible(false)}/>
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Home')}>

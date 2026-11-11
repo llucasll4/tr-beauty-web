@@ -14,6 +14,7 @@ import {
 
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
+import PrivacyNotice from './PrivacyNotice';
 import { formatBrazilMobile, normalizeBrazilMobile } from './phoneUtils';
 
 // Cores oficiais da TR Beauty Concept
@@ -55,6 +56,7 @@ export default function AuthScreen({
   const [resendBusy,setResendBusy]=useState(false);
   const [resendAfter,setResendAfter]=useState(0);
 
+  const [privacyVisible,setPrivacyVisible]=useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [failure, setFailure] = useState(false);
@@ -507,6 +509,12 @@ export default function AuthScreen({
         {/* TELA DE CADASTRO */}
         {mode === 'signup' && (
           <>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Consultar o aviso de privacidade"
+              onPress={()=>setPrivacyVisible(true)} style={{paddingVertical:13,alignItems:'center'}}>
+              <Text style={{color:C.mocha,fontSize:12,textAlign:'center',lineHeight:18}}>
+                Saiba como seus dados serão utilizados: Aviso de Privacidade
+              </Text>
+            </TouchableOpacity>
             <Btn
               title="Cadastrar"
               onPress={authEmail}
@@ -566,11 +574,17 @@ export default function AuthScreen({
         )}
 
         {/* RODAPÉ */}
+        <TouchableOpacity accessibilityRole="button" onPress={()=>setPrivacyVisible(true)}
+          style={{alignItems:'center',paddingVertical:12}}>
+          <Text style={{color:C.mocha,fontSize:12,fontWeight:'700',textDecorationLine:'underline'}}>
+            Aviso de Privacidade
+          </Text>
+        </TouchableOpacity>
         <Text style={s.foot}>
-          Seus dados são protegidos pela
-          {' '}TR Beauty Concept.
+          Seus dados são tratados conforme o aviso de privacidade do estúdio.
         </Text>
       </ScrollView>
+      <PrivacyNotice visible={privacyVisible} onClose={()=>setPrivacyVisible(false)}/>
     </SafeAreaView>
   );
 }
