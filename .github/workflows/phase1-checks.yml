@@ -70,4 +70,5 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f tests/db/fixture.sql
           psql -v ON_ERROR_STOP=1 -f tests/db/generated-functions.sql
           psql -v ON_ERROR_STOP=1 -f tests/db/install-triggers.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261111_phase1_restrict_trigger_rpc.sql
           psql -v ON_ERROR_STOP=1 -f tests/db/regression.sql
