@@ -22,6 +22,7 @@ import AuthScreen from './AuthScreen';
 import CompletePhoneScreen from './CompletePhoneScreen';
 import { normalizeBrazilMobile } from './phoneUtils';
 import ProfileScreen from './ProfileScreen';
+import ClientSettings from './ClientSettings';
 import AdminCalendar from './AdminCalendar';
 import AdminCalendarBlocks from './AdminCalendarBlocks';
 import AdminManualBooking from './AdminManualBooking';
@@ -120,6 +121,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [pointsReturnScreen, setPointsReturnScreen] = useState('Home');
   const [notifications, setNotifications] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [appAlertsEnabled, setAppAlertsEnabled] = useState(true);
+  const [notificationReturnScreen, setNotificationReturnScreen] = useState('Home');
   const [notificationsLoading, setNotificationsLoading] = useState(!!user);
   const [notificationsError, setNotificationsError] = useState('');
   const [notificationActionSaving, setNotificationActionSaving] = useState(false);
@@ -134,6 +137,18 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     user?.user_metadata?.name ||
     (user ? 'Cliente' : 'Visitante')
   ).trim().split(/\s+/)[0];
+  useEffect(() => {
+    if(!user?.id || isAdmin)return;
+    let active=true;
+    const loadAppAlerts=async()=>{
+      const {data,error}=await supabase.from('client_care_preferences')
+        .select('app_alerts_enabled').eq('user_id',user.id).maybeSingle();
+      if(active&&!error)setAppAlertsEnabled(data?.app_alerts_enabled!==false);
+    };
+    loadAppAlerts();
+    return()=>{active=false;};
+  },[user?.id,isAdmin,currentScreen]);
+
   const loadNotifications = useCallback(async () => {
     if (!user?.id) return;
     const cutoff = new Date().toISOString();
@@ -698,9 +713,12 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         <TouchableOpacity style={styles.homeBellButton} accessibilityRole="button"
           accessibilityLabel={user ? 'Abrir notificações' :
             'Entre na sua conta para ver notificações'}
-          onPress={() => user ? setCurrentScreen('Notifications') : onRequestAuth('Home')}>
+          onPress={() => {
+            if(user) { setNotificationReturnScreen('Home'); setCurrentScreen('Notifications'); }
+            else onRequestAuth('Home');
+          }}>
           <Ionicons name="notifications-outline" size={29} color={homeColors.brown}/>
-          {user && (isAdmin ? unreadAdminCount : unreadNotifications) > 0 && (
+          {user && (isAdmin || appAlertsEnabled) && (isAdmin ? unreadAdminCount : unreadNotifications) > 0 && (
             <View style={styles.homeBellBadge}>
               <Text style={styles.homeBellBadgeText}>
                 {(isAdmin ? unreadAdminCount : unreadNotifications) > 9 ? '9+' :
@@ -1231,7 +1249,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           loading={notificationsLoading}
           error={notificationsError}
           updating={notificationActionSaving}
-          onBack={() => setCurrentScreen('Home')}
+          onBack={() => setCurrentScreen(isAdmin ? 'Home' : notificationReturnScreen)}
           onRefresh={loadNotifications}
           onMarkRead={(id) => markNotificationRead(id)}
           onMarkAll={() => markNotificationRead()}
@@ -1255,12 +1273,22 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             setCurrentScreen('Booking');
           }}
         />}
-        {currentScreen === 'Profile' && user && !isAdmin && <ProfileScreen
+        {currentScreen === 'Profile' && user && !isAdmin && <ClientSettings
           user={user}
-          requirePhone
           onLogout={onLogout}
           onAvatarChange={setHomeAvatar}
           onNameChange={setHomeName}
+          onBack={() => setCurrentScreen('Home')}
+          onAppAlertsChange={setAppAlertsEnabled}
+          onOpenNotifications={() => {
+            setNotificationReturnScreen('Profile');
+            setCurrentScreen('Notifications');
+          }}
+          onOpenHistory={() => {
+            setPointsInitialTab('services');
+            setPointsReturnScreen('Profile');
+            setCurrentScreen('Points');
+          }}
           onOpenRules={() => {
             setPointsInitialTab('vip');
             setPointsReturnScreen('Profile');
