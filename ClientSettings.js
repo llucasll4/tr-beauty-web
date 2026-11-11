@@ -67,6 +67,7 @@ export default function ClientSettings({
   onOpenNotifications=()=>{}, onAppAlertsChange=()=>{},
 }) {
   const [editing,setEditing]=useState(false);
+  const [avatarPreview,setAvatarPreview]=useState(null);
   const [profile,setProfile]=useState(null);
   const [birthday,setBirthday]=useState(null);
   const [care,setCare]=useState({
@@ -247,7 +248,7 @@ export default function ClientSettings({
       </TouchableOpacity>
       <ProfileScreen user={user} onLogout={onLogout} showPoints={false}
         requirePhone showNotificationPreferences={false}
-        onAvatarChange={preview=>{onAvatarChange(preview);}}
+        onAvatarChange={preview=>{setAvatarPreview(preview);onAvatarChange(preview);}}
         onNameChange={value=>{onNameChange(value);setProfile(old=>({...old,full_name:value}));}}/>
     </View>;
   }
@@ -268,7 +269,7 @@ export default function ClientSettings({
       <TouchableOpacity accessibilityRole="button" onPress={()=>setEditing(true)}
         style={s.identity}>
         <View style={s.avatar}>
-          {avatarUrl?<Image source={{uri:avatarUrl}} style={s.avatarImage}/>:
+          {(avatarPreview||avatarUrl)?<Image source={{uri:avatarPreview||avatarUrl}} style={s.avatarImage}/>:
             <Text style={s.avatarLetters}>{monogram}</Text>}
         </View>
         <View style={{flex:1,minWidth:0}}>
