@@ -7,10 +7,12 @@ import { supabase } from './supabase';
 const C = {
   white: '#FFFFFF',
   ink: '#2C2C2C',
-  mocha: '#7A655B',
+  mocha: '#665043',
   muted: '#756B65',
-  nude: '#EBE5DF',
-  border: '#E6DDD5',
+  nude: '#EBE3D9',
+  border: '#E0D8CF',
+  gold: '#A97D48',
+  confirmed: '#356748',
 };
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
@@ -125,13 +127,13 @@ export default function NextSelfCareCard({ userId, onOpenAppointments, refreshSi
       hourFormatter.format(when) + '. ' + serviceName(next.services) + '. ' + status}>
     <View style={s.row}>
       <View style={s.iconBox}>
-        <Ionicons name="calendar-outline" size={23} color={C.mocha}/>
+        <Ionicons name="calendar-outline" size={23} color={C.gold}/>
       </View>
       <View style={s.content}>
         <Text style={s.title}>Seu momento de autocuidado</Text>
         <Text style={s.date}>{dateLabel} às {hourFormatter.format(when)}</Text>
         <Text style={s.detail} numberOfLines={2}>{serviceName(next.services)}</Text>
-        <Text style={s.status}>{status}</Text>
+        <Text style={[s.status, next.status === 'confirmed' && s.confirmedStatus]}>{status}</Text>
       </View>
       <Ionicons name="chevron-forward" size={19} color={C.mocha}/>
     </View>
@@ -163,4 +165,5 @@ const s = StyleSheet.create({
   date: { color: C.ink, fontSize: 15, fontWeight: '700', lineHeight: 22 },
   detail: { color: C.muted, fontSize: 13, marginTop: 2, lineHeight: 19 },
   status: { color: C.mocha, fontSize: 11, marginTop: 6, fontWeight: '600' },
+  confirmedStatus: { color: C.confirmed },
 });

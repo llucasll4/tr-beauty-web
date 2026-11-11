@@ -49,6 +49,8 @@ const colors = {
   mocha: '#7A655B',
   border: '#EBE5DF',
 };
+// Tons quentes da referência — somente Home e navegação, sem mudar o tema global.
+const homeColors = { background: '#FAF9F5', brown: '#402816', bronze: '#9B6840' };
 
 // Emojis relacionados a unhas para os cards, sem associar gel a gotas d'água.
 const emojiForHomeService = (name = '') => {
@@ -629,7 +631,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   }
 
   const HomeScreen = () => (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
+    <ScrollView style={styles.homeScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <View style={styles.homeGreetingHeader}>
         <TouchableOpacity style={styles.greetingAvatarButton} accessibilityRole="button"
           accessibilityLabel={isAdmin ? 'Abrir meu perfil no Admin' : user ? 'Abrir perfil' : 'Entrar ou criar conta'}
@@ -648,7 +650,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           accessibilityLabel={user ? 'Abrir notificações' :
             'Entre na sua conta para ver notificações'}
           onPress={() => user ? setCurrentScreen('Notifications') : onRequestAuth('Home')}>
-          <Ionicons name="notifications-outline" size={29} color={colors.ink}/>
+          <Ionicons name="notifications-outline" size={29} color={homeColors.brown}/>
           {user && (isAdmin ? unreadAdminCount : unreadNotifications) > 0 && (
             <View style={styles.homeBellBadge}>
               <Text style={styles.homeBellBadgeText}>
@@ -1174,25 +1176,25 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Home')}>
-          <Ionicons name={currentScreen === 'Home' ? 'home' : 'home-outline'} size={24} color={currentScreen === 'Home' ? colors.ink : colors.muted} />
+          <Ionicons name={currentScreen === 'Home' ? 'home' : 'home-outline'} size={24} color={currentScreen === 'Home' ? homeColors.brown : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Home' && styles.navTextActive]}>Início</Text>
         </TouchableOpacity>
         {!isAdmin && <TouchableOpacity style={styles.navItem}
           onPress={() => { setCurrentScreen('Booking'); if (user) { setBookingView('hub'); setBookingSuccess(''); } }}>
-          <Ionicons name={currentScreen === 'Booking' ? 'calendar' : 'calendar-outline'} size={24} color={currentScreen === 'Booking' ? colors.ink : colors.muted} />
+          <Ionicons name={currentScreen === 'Booking' ? 'calendar' : 'calendar-outline'} size={24} color={currentScreen === 'Booking' ? homeColors.brown : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Booking' && styles.navTextActive]}>{user ? 'Reservas' : 'Agendar'}</Text>
         </TouchableOpacity>}
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Portfolio')}>
-          <Ionicons name={currentScreen === 'Portfolio' ? 'image' : 'image-outline'} size={24} color={currentScreen === 'Portfolio' ? colors.ink : colors.muted} />
+          <Ionicons name={currentScreen === 'Portfolio' ? 'image' : 'image-outline'} size={24} color={currentScreen === 'Portfolio' ? homeColors.brown : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Portfolio' && styles.navTextActive]}>Galeria</Text>
         </TouchableOpacity>
         {!isAdmin && <TouchableOpacity style={styles.navItem} onPress={() => isAdmin ? (setAdminSection('perfil'),setCurrentScreen('Admin')) : user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
-          <Ionicons name={currentScreen === 'Profile' ? 'person' : 'person-outline'} size={24} color={currentScreen === 'Profile' ? colors.ink : colors.muted}/>
+          <Ionicons name={currentScreen === 'Profile' ? 'person' : 'person-outline'} size={24} color={currentScreen === 'Profile' ? homeColors.brown : colors.muted}/>
           <Text style={[styles.navText,currentScreen === 'Profile' && styles.navTextActive]}>{user ? 'Perfil' : 'Entrar'}</Text>
         </TouchableOpacity>}
         {isAdmin && (
           <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Admin')}>
-            <Ionicons name={currentScreen === 'Admin' ? 'settings' : 'settings-outline'} size={24} color={currentScreen === 'Admin' ? colors.ink : colors.muted} />
+            <Ionicons name={currentScreen === 'Admin' ? 'settings' : 'settings-outline'} size={24} color={currentScreen === 'Admin' ? homeColors.brown : colors.muted} />
             <Text style={[styles.navText, currentScreen === 'Admin' && styles.navTextActive]}>Admin</Text>
           </TouchableOpacity>
         )}
@@ -1320,6 +1322,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   mainContent: { flex: 1 },
   container: { padding: 24, paddingBottom: 40 },
+  homeScroll: { backgroundColor: homeColors.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, marginTop: 10 },
   homeGreetingHeader: { flexDirection: 'row', alignItems: 'center',
     gap: 13, marginBottom: 27, marginTop: 8, minHeight: 70 },
@@ -1335,7 +1338,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.11, shadowRadius: 11,
     shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   homeBellBadge: { position: 'absolute', right: 8, top: 8,
-    minWidth: 20, height: 20, borderRadius: 10, backgroundColor: '#AD4D55',
+    minWidth: 20, height: 20, borderRadius: 10, backgroundColor: homeColors.bronze,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   homeBellBadgeText: { color: colors.white, fontSize: 10, fontWeight: '700' },
   pageHeader: { paddingHorizontal: 24, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.white },
@@ -1466,7 +1469,7 @@ const styles = StyleSheet.create({
   bottomNav: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border, paddingBottom: Platform.OS === 'ios' ? 24 : 12 },
   navItem: { alignItems: 'center', minWidth: 55 },
   navText: { fontSize: 10, color: colors.muted, marginTop: 4 },
-  navTextActive: { color: colors.ink, fontWeight: 'bold' },
+  navTextActive: { color: homeColors.brown, fontWeight: 'bold' },
   adminAction: { color: colors.mocha, fontWeight: '700' },
   successText: { color: '#247047', fontWeight: '600' },
   confirmationBackdrop: { flex: 1, backgroundColor: 'rgba(25, 25, 25, 0.58)', justifyContent: 'center', alignItems: 'center', padding: 22 },
