@@ -197,7 +197,7 @@ export default function AdminCalendarBlocks({onBack}) {
         <View style={{flex:1}}>
           <ScheduleInput type="time" label="Fim" value={endTime} onChange={setEndTime}/>
         </View>
-      </View>
+      </View>}
       <Text style={s.label}>Motivo (opcional)</Text>
       <TextInput style={s.input} value={reason} maxLength={200}
         onChangeText={setReason} placeholder="Ex.: folga, manutenção, compromisso"
