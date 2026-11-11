@@ -23,6 +23,7 @@ import CompletePhoneScreen from './CompletePhoneScreen';
 import { normalizeBrazilMobile } from './phoneUtils';
 import ProfileScreen from './ProfileScreen';
 import AdminCalendar from './AdminCalendar';
+import AdminCalendarBlocks from './AdminCalendarBlocks';
 import AdminManualBooking from './AdminManualBooking';
 import AdminClients from './AdminClients';
 import LoyaltyCard from './LoyaltyCard';
@@ -333,6 +334,52 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [myAppointmentsRefresh, setMyAppointmentsRefresh] = useState(0);
   const [bookingStartStep,setBookingStartStep] = useState(initialServiceId && initialScreen === 'Booking' ? 2 : 1);
   const [adminSection, setAdminSection] = useState('agenda');
+  const [adminQuickOpen, setAdminQuickOpen] = useState(false);
+  const [adminTodayStats, setAdminTodayStats] = useState(null);
+  const [adminStatsError, setAdminStatsError] = useState('');
+  const [adminStatsLoading, setAdminStatsLoading] = useState(false);
+
+  const loadAdminTodayStats = useCallback(async () => {
+    if (!isAdmin || !user?.id) return;
+    setAdminStatsLoading(true);
+    try {
+      const today = localDateKey(new Date());
+      const start = new Date(today + 'T00:00:00-03:00');
+      const end = new Date(start.getTime() + 86400000);
+      const { data, error: queryError } = await supabase.from('appointments')
+        .select('status,price_at_booking')
+        .gte('starts_at', start.toISOString())
+        .lt('starts_at', end.toISOString())
+        .limit(1000);
+      if (queryError) throw queryError;
+      if ((data || []).length === 1000) throw new Error('Volume muito alto; atualize o painel.');
+      const active = (data || []).filter(a =>
+        ['pending','confirmed','completed'].includes(a.status));
+      setAdminTodayStats({
+        visits: active.length,
+        revenue: active.filter(a => a.status === 'completed')
+          .reduce((total,a) => total + Number(a.price_at_booking || 0), 0),
+        cancelled: (data || []).filter(a => a.status === 'cancelled').length,
+      });
+      setAdminStatsError('');
+    } catch (e) {
+      setAdminStatsError('Indicadores indisponíveis. Toque em atualizar.');
+    } finally {setAdminStatsLoading(false);}
+  }, [isAdmin, user?.id]);
+
+  useEffect(() => {
+    if (!isAdmin || currentScreen !== 'Admin') return;
+    loadAdminTodayStats();
+    const id = setInterval(loadAdminTodayStats, 60000);
+    return () => clearInterval(id);
+  }, [isAdmin, currentScreen, adminSection, loadAdminTodayStats]);
+
+  function goToAdminSection(section) {
+    setAdminQuickOpen(false);
+    setAdminSection(section);
+    setCurrentScreen('Admin');
+  }
+
   const [selectedServiceId, setSelectedServiceId] = useState(initialServiceId);
   const [selectedDate, setSelectedDate] = useState(initialBookableDate);
   const [calendarMonth, setCalendarMonth] = useState(() => initialBookableDate().slice(0, 7));
@@ -892,47 +939,95 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     </View>
   ) : (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: '#F4F5F7', flexGrow: 1 }]}>
-      <View style={{ marginBottom: 20, marginTop: 10 }}>
-        <Text style={styles.greeting}>Painel Admin 👩‍💻</Text>
-        <Text style={styles.subtitle}>Agenda, clientes, serviços e indicadores do estúdio</Text>
-        <TouchableOpacity accessibilityRole="button"
-          onPress={() => setCurrentScreen('Notifications')}
-          style={[styles.guestCardButton,{alignSelf:'flex-start',marginTop:13}]}>
-          <Ionicons name="notifications-outline" size={19} color={colors.mocha}/>
-          <Text style={styles.guestCardButtonText}>Central de Controle</Text>
-          {unreadAdminCount > 0 &&
-            <Text style={[styles.guestCardButtonText,{color:'#AD3441'}]}>
-              {unreadAdminCount} novo{unreadAdminCount===1?'':'s'}
-            </Text>}
+      <View style={styles.adminHeader}>
+        <View style={{flex:1,minWidth:0}}>
+          <Text style={styles.adminTitle}>Painel Admin 👩‍💻</Text>
+          <Text style={styles.adminSubtitle}>Agenda, clientes, serviços e indicadores do estúdio</Text>
+        </View>
+        <View style={styles.adminHeaderActions}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={
+              'Notificações da administração' +
+              (unreadAdminCount ? ': '+unreadAdminCount+' não lidas' : '')
+            } onPress={() => {setAdminQuickOpen(false);setCurrentScreen('Notifications');}}
+            style={styles.adminHeaderIcon}>
+            <Ionicons name="notifications-outline" color={homeColors.brown} size={26}/>
+            {unreadAdminCount > 0 && <View style={styles.adminUnreadDot}/>}
+          </TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button"
+            accessibilityLabel="Configurações da administração"
+            onPress={() => goToAdminSection('configuracoes')}
+            style={styles.adminHeaderIcon}>
+            <Ionicons name={adminSection==='configuracoes'?'settings':'settings-outline'}
+              color={homeColors.brown} size={27}/>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.adminKpiHeader}>
+        <Text style={styles.adminKpiHeading}>Indicadores Rápidos (Hoje)</Text>
+        <TouchableOpacity onPress={loadAdminTodayStats} disabled={adminStatsLoading}
+          accessibilityRole="button" accessibilityLabel="Atualizar indicadores">
+          <Ionicons name="refresh-outline" color={colors.mocha} size={19}/>
         </TouchableOpacity>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        style={{ marginBottom: 21 }}
-        contentContainerStyle={[styles.adminTabs, { minWidth: 1230, marginBottom: 0 }]}>
+      <View style={styles.adminKpiRow}>
         {[
-          ['agenda', 'Agenda'],
-          ['manual', 'Agendar cliente'],
-          ['clientes', 'Clientes'],
-          ['servicos', 'Serviços'],
-          ['portfolio', 'Portfólio'],
-          ['financeiro', 'Financeiro'],
-          ['pontos','TR Points'],
-          ['nailbook','Nail Book'],
-          ['whatsapp','WhatsApp'],
-          ['perfil','Meu perfil'],
-        ].map(([id, label]) => (
-          <TouchableOpacity
-            key={id}
-            style={[styles.adminTab, adminSection === id && styles.adminTabActive]}
-            onPress={() => setAdminSection(id)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: adminSection === id }}
-          >
-            <Text style={[styles.adminTabText, adminSection === id && styles.adminTabTextActive]}>{label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-      {adminSection === 'agenda' && <AdminCalendar />}
+          ['Atendimentos',adminTodayStats?.visits,'#EBE0D6'],
+          ['Faturamento',adminTodayStats
+            ? Number(adminTodayStats.revenue || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
+            : null,'#F0E8D8'],
+          ['Cancelados',adminTodayStats?.cancelled,'#EBE0D6'],
+        ].map(([label,value,tint])=>
+          <View key={label} style={[styles.adminKpiCard,{backgroundColor:tint}]}>
+            <Text style={styles.adminKpiLabel}>{label}</Text>
+            {adminStatsLoading&&!adminTodayStats
+              ? <ActivityIndicator color={colors.mocha} size="small"/> :
+              <Text style={styles.adminKpiValue} numberOfLines={1} adjustsFontSizeToFit>
+                {value === null || value === undefined ? '—' : value}
+              </Text>}
+          </View>)}
+      </View>
+      {!!adminStatsError&&<Text style={styles.adminKpiError}>{adminStatsError}</Text>}
+      <View style={[styles.adminTabs,{marginBottom:21}]}>
+        {[
+          ['agenda','Agenda'],
+          ['clientes','Clientes'],
+          ['financeiro','Métricas'],
+        ].map(([id,label])=>
+          <TouchableOpacity key={id} accessibilityRole="button"
+            accessibilityState={{selected:adminSection===id}}
+            style={[styles.adminTab,adminSection===id&&styles.adminTabActive]}
+            onPress={() => goToAdminSection(id)}>
+            <Text style={[styles.adminTabText,adminSection===id&&styles.adminTabTextActive]}>{label}</Text>
+          </TouchableOpacity>)}
+      </View>
+      {adminSection === 'configuracoes' && <View style={styles.adminSettingsCard}>
+        <Text style={styles.adminSettingsTitle}>Configurações do estúdio</Text>
+        <Text style={styles.adminSettingsSubtitle}>Gerencie os recursos e as preferências administrativas</Text>
+        {[
+          ['perfil','person-outline','Meu perfil','Dados e conta do estúdio'],
+          ['servicos','color-palette-outline','Serviços','Cadastrar, editar e desativar serviços'],
+          ['bloqueios','lock-closed-outline','Bloqueios da agenda','Folgas, dias e horários indisponíveis'],
+          ['pontos','diamond-outline','TR Points','Valores e regras de pontuação'],
+          ['whatsapp','logo-whatsapp','WhatsApp','Integração e comunicação'],
+          ['portfolio','images-outline','Portfólio','Fotos e inspirações'],
+          ['nailbook','book-outline','Nail Book','Histórico e inspirações'],
+        ].map(([id,icon,label,description]) =>
+          <TouchableOpacity key={id} accessibilityRole="button"
+            accessibilityLabel={label} onPress={() => goToAdminSection(id)}
+            style={styles.adminSettingsRow}>
+            <View style={styles.adminSettingsIcon}>
+              <Ionicons name={icon} size={22} color={colors.mocha}/>
+            </View>
+            <View style={{flex:1,minWidth:0}}>
+              <Text style={styles.adminSettingsRowTitle}>{label}</Text>
+              <Text style={styles.adminSettingsRowCaption}>{description}</Text>
+            </View>
+            <Ionicons name="chevron-forward-outline" size={19} color={colors.mocha}/>
+          </TouchableOpacity>)}
+      </View>}
+{adminSection === 'agenda' && <AdminCalendar />}
+      {adminSection === 'bloqueios' && <AdminCalendarBlocks onBack={() => goToAdminSection('agenda')}/>}
       {adminSection === 'manual' && <AdminManualBooking services={services} onShowAgenda={() => setAdminSection('agenda')}/>}
       {adminSection === 'clientes' && <AdminClients />}
       {adminSection === 'portfolio' && <PortfolioScreen adminMode services={services} />}
@@ -1172,6 +1267,33 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           }}
         />}
         {currentScreen === 'Admin' && isAdmin && AdminScreen()}
+        {currentScreen === 'Admin' && isAdmin &&
+          !['perfil','nailbook'].includes(adminSection) &&
+          <View style={styles.adminQuickOverlay} pointerEvents="box-none">
+            {adminQuickOpen && <View style={styles.adminQuickMenu}>
+              {[
+                ['manual','calendar-outline','Agendar cliente'],
+                ['bloqueios','lock-closed-outline','Bloquear dias e horários'],
+                ['servicos','add-circle-outline','Adicionar novo serviço'],
+              ].map(([section,icon,label]) =>
+                <TouchableOpacity key={label} accessibilityRole="button"
+                  accessibilityLabel={label} style={styles.adminQuickItem}
+                  onPress={() => {
+                    goToAdminSection(section);
+                    if(label==='Adicionar novo serviço')beginNewService();
+                  }}>
+                  <Ionicons name={icon} color={colors.mocha} size={21}/>
+                  <Text style={styles.adminQuickLabel}>{label}</Text>
+                </TouchableOpacity>)}
+            </View>}
+            <TouchableOpacity accessibilityRole="button"
+              accessibilityLabel={adminQuickOpen ? 'Fechar ações rápidas' : 'Abrir ações rápidas'}
+              accessibilityState={{expanded:adminQuickOpen}}
+              style={styles.adminFab}
+              onPress={() => setAdminQuickOpen(value=>!value)}>
+              <Ionicons name={adminQuickOpen?'close':'add'} color={colors.white} size={32}/>
+            </TouchableOpacity>
+          </View>}
       </View>
 
       <View style={styles.bottomNav}>
@@ -1323,6 +1445,44 @@ const styles = StyleSheet.create({
   mainContent: { flex: 1 },
   container: { padding: 24, paddingBottom: 40 },
   homeScroll: { backgroundColor: homeColors.background },
+  adminHeader:{flexDirection:'row',alignItems:'center',gap:13,marginBottom:20,marginTop:8},
+  adminTitle:{fontSize:23,fontWeight:'800',color:colors.ink,letterSpacing:-0.5},
+  adminSubtitle:{fontSize:13,color:'#756F6A',marginTop:5,lineHeight:19},
+  adminHeaderActions:{flexDirection:'row',alignItems:'center',gap:6},
+  adminHeaderIcon:{width:42,height:42,alignItems:'center',justifyContent:'center',position:'relative'},
+  adminUnreadDot:{width:10,height:10,borderRadius:5,backgroundColor:'#C82637',
+    position:'absolute',right:6,top:5,borderWidth:1,borderColor:'#F4F5F7'},
+  adminKpiHeader:{flexDirection:'row',justifyContent:'space-between',
+    alignItems:'center',marginBottom:12},
+  adminKpiHeading:{fontSize:17,fontWeight:'700',color:colors.ink},
+  adminKpiRow:{flexDirection:'row',gap:10,marginBottom:24},
+  adminKpiCard:{flex:1,borderRadius:15,paddingHorizontal:13,paddingVertical:16,minWidth:0},
+  adminKpiLabel:{fontSize:12,color:colors.ink,marginBottom:5},
+  adminKpiValue:{fontSize:20,fontWeight:'800',color:colors.ink,minHeight:25},
+  adminKpiError:{fontSize:12,color:'#B42318',marginBottom:12},
+  adminSettingsCard:{borderRadius:18,backgroundColor:colors.white,
+    borderWidth:1,borderColor:colors.border,paddingHorizontal:17,paddingTop:18,
+    paddingBottom:6,marginBottom:20},
+  adminSettingsTitle:{fontSize:19,fontWeight:'800',color:colors.ink},
+  adminSettingsSubtitle:{fontSize:12,color:colors.mocha,marginTop:5,marginBottom:13},
+  adminSettingsRow:{flexDirection:'row',alignItems:'center',gap:12,
+    paddingVertical:13,borderTopWidth:1,borderTopColor:colors.border},
+  adminSettingsIcon:{width:40,height:40,borderRadius:12,backgroundColor:'#F3ECE5',
+    alignItems:'center',justifyContent:'center'},
+  adminSettingsRowTitle:{color:colors.ink,fontSize:14,fontWeight:'700'},
+  adminSettingsRowCaption:{color:colors.mocha,fontSize:12,marginTop:4,lineHeight:17},
+  adminQuickOverlay:{position:'absolute',right:20,bottom:18,alignItems:'flex-end',
+    zIndex:50,elevation:8},
+  adminFab:{width:58,height:58,borderRadius:29,backgroundColor:'#604736',
+    alignItems:'center',justifyContent:'center',shadowColor:'#281B16',
+    shadowOpacity:0.28,shadowRadius:13,shadowOffset:{width:0,height:7},elevation:7},
+  adminQuickMenu:{marginBottom:13,backgroundColor:colors.white,
+    borderRadius:17,borderWidth:1,borderColor:colors.border,minWidth:225,
+    paddingHorizontal:7,paddingVertical:7,shadowColor:'#3B2B22',
+    shadowOpacity:0.14,shadowRadius:15,shadowOffset:{width:0,height:5},elevation:6},
+  adminQuickItem:{flexDirection:'row',alignItems:'center',gap:12,
+    paddingHorizontal:13,paddingVertical:14,borderRadius:11},
+  adminQuickLabel:{color:colors.ink,fontWeight:'700',fontSize:13},
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, marginTop: 10 },
   homeGreetingHeader: { flexDirection: 'row', alignItems: 'center',
     gap: 13, marginBottom: 27, marginTop: 8, minHeight: 70 },
