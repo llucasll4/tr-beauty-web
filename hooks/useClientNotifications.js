@@ -25,7 +25,8 @@ export function useClientNotifications({user,isAdmin,currentScreen}) {
   },[user?.id,isAdmin,currentScreen]);
 
   const loadNotifications = useCallback(async () => {
-    if (!user?.id) return;
+    // O painel Admin usa uma caixa de alertas própria; não consulta o feed de clientes.
+    if (!user?.id || isAdmin) return;
     const cutoff = new Date().toISOString();
     try {
       const fields = 'id,appointment_id,type,title,body,created_at,visible_at,read_at';
@@ -58,10 +59,10 @@ export function useClientNotifications({user,isAdmin,currentScreen}) {
     } finally {
       setNotificationsLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id,isAdmin]);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!user?.id || isAdmin) {
       setNotifications([]);
       setUnreadNotifications(0);
       setNotificationsLoading(false);
@@ -81,15 +82,15 @@ export function useClientNotifications({user,isAdmin,currentScreen}) {
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [user?.id, loadNotifications]);
+  }, [user?.id, isAdmin, loadNotifications]);
 
   useEffect(() => {
-    if (user?.id && (currentScreen === 'Home' || currentScreen === 'Notifications'))
+    if (!isAdmin && user?.id && (currentScreen === 'Home' || currentScreen === 'Notifications'))
       loadNotifications();
-  }, [currentScreen, user?.id, loadNotifications]);
+  }, [currentScreen, user?.id, isAdmin, loadNotifications]);
 
   async function markNotificationRead(id = null) {
-    if (!user?.id || notificationActionSaving) return;
+    if (!user?.id || isAdmin || notificationActionSaving) return;
     setNotificationActionSaving(true);
     try {
       let query = supabase.from('notifications')
