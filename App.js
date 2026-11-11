@@ -23,6 +23,7 @@ import CompletePhoneScreen from './CompletePhoneScreen';
 import { normalizeBrazilMobile } from './phoneUtils';
 import ProfileScreen from './ProfileScreen';
 import ClientSettings from './ClientSettings';
+import AdminAccountRequests from './AdminAccountRequests';
 import AdminCalendar from './AdminCalendar';
 import AdminCalendarBlocks from './AdminCalendarBlocks';
 import AdminManualBooking from './AdminManualBooking';
@@ -1028,6 +1029,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           ['perfil','person-outline','Meu perfil','Dados e conta do estúdio'],
           ['servicos','color-palette-outline','Serviços','Cadastrar, editar e desativar serviços'],
           ['bloqueios','lock-closed-outline','Bloqueios da agenda','Folgas, dias e horários indisponíveis'],
+          ['solicitacoes','trash-outline','Exclusão de contas','Pedidos das clientes aguardando análise'],
           ['pontos','diamond-outline','TR Points','Valores e regras de pontuação'],
           ['whatsapp','logo-whatsapp','WhatsApp','Integração e comunicação'],
           ['portfolio','images-outline','Portfólio','Fotos e inspirações'],
@@ -1048,6 +1050,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       </View>}
 {adminSection === 'agenda' && <AdminCalendar key={adminCalendarRefresh} />}
       {adminSection === 'bloqueios' && <AdminCalendarBlocks onBack={() => goToAdminSection('agenda')}/>}
+      {adminSection === 'solicitacoes' && <AdminAccountRequests onBack={() => goToAdminSection('configuracoes')}/>}
       {adminSection === 'clientes' && <AdminClients />}
       {adminSection === 'portfolio' && <PortfolioScreen adminMode services={services} />}
       {adminSection === 'financeiro' && <FinancialDashboard />}
