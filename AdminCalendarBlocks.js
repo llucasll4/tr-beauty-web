@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, ScrollView, StyleSheet, Text, TextInput,
+  ActivityIndicator, Platform, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +28,27 @@ function validDate(text) {
   if(!/^\d{4}-\d{2}-\d{2}$/.test(text))return false;
   const date=new Date(text+'T12:00:00Z');
   return !Number.isNaN(date.getTime())&&date.toISOString().slice(0,10)===text;
+}
+const webFieldStyle = {
+  width:'100%', boxSizing:'border-box', backgroundColor:'#FFFFFF',
+  color:C.ink, border:'1px solid '+C.border, borderRadius:11,
+  padding:'12px', minHeight:46, fontSize:16, fontFamily:'inherit', marginBottom:15,
+};
+function ScheduleInput({type,label,value,onChange,min}) {
+  return <View>
+    <Text style={s.label}>{label}</Text>
+    {Platform.OS==='web'
+      ? React.createElement('input',{
+          type,value,onChange:e=>onChange(e.target.value),
+          min:type==='date'?min:undefined,
+          step:type==='time'?60:undefined,
+          'aria-label':label,
+          style:webFieldStyle,
+        })
+      : <TextInput style={s.input} value={value} onChangeText={onChange}
+          accessibilityLabel={label} placeholder={type==='date'?'AAAA-MM-DD':'HH:MM'}
+          autoCapitalize="none" maxLength={type==='date'?10:5}/>}
+  </View>;
 }
 const validClock = text => /^([01]\d|2[0-3]):[0-5]\d$/.test(text);
 const labelDate = value => DISPLAY.format(new Date(value));
@@ -156,32 +177,27 @@ export default function AdminCalendarBlocks({onBack}) {
           </TouchableOpacity>)}
       </View>
 
-      <Text style={s.label}>{mode==='day'?'Primeiro dia':'Dia do bloqueio'}</Text>
-      <TextInput style={s.input} value={startDate}
-        placeholder="AAAA-MM-DD" autoCapitalize="none"
-        accessibilityLabel="Data inicial"
-        maxLength={10} onChangeText={value=>{setStartDate(value);if(mode==='hours')setEndDate(value);}}/>
+      <ScheduleInput type="date" label={mode==='day'?'Primeiro dia':'Dia do bloqueio'}
+        value={startDate} min={today}
+        onChange={value=>{
+          setStartDate(value);
+          if(mode==='hours'||(!endDate||value>endDate))setEndDate(value);
+        }}/>
       {mode==='day'&&<>
-        <Text style={s.label}>Último dia (inclusive)</Text>
-        <TextInput style={s.input} value={endDate} placeholder="AAAA-MM-DD"
-          autoCapitalize="none" maxLength={10} accessibilityLabel="Data final"
-          onChangeText={setEndDate}/>
-        <Text style={s.helper}>Para bloquear um único dia, informe a mesma data nos dois campos.</Text>
+        <ScheduleInput type="date" label="Último dia (inclusive)"
+          value={endDate} min={startDate} onChange={setEndDate}/>
+        <Text style={[s.helper,{marginBottom:13}]}>
+          Para bloquear um único dia, deixe as duas datas iguais.
+        </Text>
       </>}
       {mode==='hours'&&<View style={s.timesRow}>
         <View style={{flex:1}}>
-          <Text style={s.label}>Início</Text>
-          <TextInput style={s.input} value={startTime} onChangeText={setStartTime}
-            keyboardType="numbers-and-punctuation" placeholder="12:00" maxLength={5}
-            accessibilityLabel="Início do intervalo"/>
+          <ScheduleInput type="time" label="Início" value={startTime} onChange={setStartTime}/>
         </View>
         <View style={{flex:1}}>
-          <Text style={s.label}>Fim</Text>
-          <TextInput style={s.input} value={endTime} onChangeText={setEndTime}
-            keyboardType="numbers-and-punctuation" placeholder="13:00" maxLength={5}
-            accessibilityLabel="Fim do intervalo"/>
+          <ScheduleInput type="time" label="Fim" value={endTime} onChange={setEndTime}/>
         </View>
-      </View>}
+      </View>
       <Text style={s.label}>Motivo (opcional)</Text>
       <TextInput style={s.input} value={reason} maxLength={200}
         onChangeText={setReason} placeholder="Ex.: folga, manutenção, compromisso"
