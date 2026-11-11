@@ -334,6 +334,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [myAppointmentsRefresh, setMyAppointmentsRefresh] = useState(0);
   const [bookingStartStep,setBookingStartStep] = useState(initialServiceId && initialScreen === 'Booking' ? 2 : 1);
   const [adminSection, setAdminSection] = useState('agenda');
+  const [showAdminBookingModal, setShowAdminBookingModal] = useState(false);
+  const [adminCalendarRefresh, setAdminCalendarRefresh] = useState(0);
   const [adminQuickOpen, setAdminQuickOpen] = useState(false);
   const [adminTodayStats, setAdminTodayStats] = useState(null);
   const [adminStatsError, setAdminStatsError] = useState('');
@@ -754,7 +756,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       )}
 
       {isAdmin && <TouchableOpacity style={styles.primaryButton}
-        onPress={() => { setAdminSection('manual'); setCurrentScreen('Admin'); }}>
+        onPress={() => { setCurrentScreen('Admin'); setShowAdminBookingModal(true); }}>
         <Text style={styles.primaryButtonText}>Agendar cliente</Text>
         <Ionicons name="calendar-outline" size={20} color={colors.background} />
       </TouchableOpacity>}
@@ -1026,9 +1028,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             <Ionicons name="chevron-forward-outline" size={19} color={colors.mocha}/>
           </TouchableOpacity>)}
       </View>}
-{adminSection === 'agenda' && <AdminCalendar />}
+{adminSection === 'agenda' && <AdminCalendar key={adminCalendarRefresh} />}
       {adminSection === 'bloqueios' && <AdminCalendarBlocks onBack={() => goToAdminSection('agenda')}/>}
-      {adminSection === 'manual' && <AdminManualBooking services={services} onShowAgenda={() => setAdminSection('agenda')}/>}
       {adminSection === 'clientes' && <AdminClients />}
       {adminSection === 'portfolio' && <PortfolioScreen adminMode services={services} />}
       {adminSection === 'financeiro' && <FinancialDashboard />}
@@ -1279,8 +1280,13 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
                 <TouchableOpacity key={label} accessibilityRole="button"
                   accessibilityLabel={label} style={styles.adminQuickItem}
                   onPress={() => {
-                    goToAdminSection(section);
-                    if(label==='Adicionar novo serviço')beginNewService();
+                    setAdminQuickOpen(false);
+                    if(section==='manual') {
+                      setShowAdminBookingModal(true);
+                    } else {
+                      goToAdminSection(section);
+                      if(section==='servicos')beginNewService();
+                    }
                   }}>
                   <Ionicons name={icon} color={colors.mocha} size={21}/>
                   <Text style={styles.adminQuickLabel}>{label}</Text>
@@ -1295,6 +1301,20 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             </TouchableOpacity>
           </View>}
       </View>
+
+      {isAdmin && showAdminBookingModal && <AdminManualBooking
+        visible
+        services={services}
+        onClose={() => setShowAdminBookingModal(false)}
+        onBooked={() => {
+          setAdminCalendarRefresh(value => value + 1);
+          loadAdminTodayStats();
+        }}
+        onShowAgenda={() => {
+          goToAdminSection('agenda');
+          setAdminCalendarRefresh(value => value + 1);
+        }}
+      />}
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Home')}>
