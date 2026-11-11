@@ -5,6 +5,7 @@ import {
   Dimensions,
   Image,
   Linking,
+  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -394,7 +395,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [editingId, setEditingId] = useState(null);
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [serviceForm, setServiceForm] = useState({
-    name: '', description: '', category: '', price: '',
+    name: '', description: '', price: '',
     duration_minutes: '', redeem_points: '300', active: true,
   });
 
@@ -437,7 +438,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
 
   function beginNewService() {
     setEditingId(null);
-    setServiceForm({ name: '', description: '', category: '', price: '', duration_minutes: '', redeem_points: String(300+100*services.length), active: true });
+    setServiceForm({ name: '', description: '', price: '', duration_minutes: '', redeem_points: String(300+100*services.length), active: true });
     setShowServiceForm(true);
     setServiceError('');
   }
@@ -446,10 +447,17 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     setEditingId(service.id);
     setServiceForm({
       name: service.name || '', description: service.description || '',
-      category: service.category || '', price: String(service.price),
+      price: String(service.price),
       duration_minutes: String(service.duration_minutes), redeem_points: String(service.redeem_points || 300), active: service.active,
     });
     setShowServiceForm(true);
+    setServiceError('');
+  }
+
+  function closeServiceForm() {
+    if (savingService) return;
+    setShowServiceForm(false);
+    setEditingId(null);
     setServiceError('');
   }
 
@@ -470,7 +478,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     const payload = {
       name: serviceForm.name.trim(),
       description: serviceForm.description.trim() || null,
-      category: serviceForm.category.trim() || null,
+      // Categoria é opcional no Supabase e não é solicitada no formulário.
+      // Para serviços já existentes, não alterar a categoria previamente salva.
       price, duration_minutes: duration, redeem_points: redeemPoints, active: serviceForm.active,
     };
     try {
@@ -937,12 +946,12 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
           <Text style={{ color: colors.mocha }}>Atualizar lista</Text>
         </TouchableOpacity>
         {servicesLoading && <ActivityIndicator color={colors.mocha} />}
-        {!!serviceError && <Text style={styles.loginError}>{serviceError}</Text>}
+        {!!serviceError && !showServiceForm && <Text style={styles.loginError}>{serviceError}</Text>}
         {services.map((service) => (
           <View key={service.id} style={[styles.simpleServiceCard, { marginBottom: 12 }]}>
             <Text style={styles.serviceTitle}>{service.name}</Text>
             <Text style={styles.serviceDetails}>
-              {service.category || 'Sem categoria'} • {service.duration_minutes} min • {money(service.price)}
+              {service.duration_minutes} min • {money(service.price)}
             </Text>
             <Text style={[styles.subtitle, { marginTop: 6 }]}>
               {service.active ? 'Ativo' : 'Desativado'}
@@ -959,48 +968,97 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             </View>
           </View>
         ))}
-        {showServiceForm && (
-          <View style={[styles.simpleServiceCard, { marginTop: 12, padding: 18 }]}>
-            <Text style={styles.sectionTitle}>{editingId ? 'Editar serviço' : 'Novo serviço'}</Text>
-            {[
-              ['name', 'Nome do serviço'],
-              ['description', 'Descrição'],
-              ['category', 'Categoria'],
-              ['price', 'Preço (ex.: 120,00)'],
-              ['duration_minutes', 'Duração em minutos (ex.: 90)'],
-              ['redeem_points', 'Pontos necessários para resgatar o serviço'],
-            ].map(([field, title]) => (
-              <View key={field}>
-                <Text style={styles.inputLabel}>{title}</Text>
-                <TextInput
-                  style={styles.loginInput}
-                  value={serviceForm[field]}
-                  onChangeText={(value) => setServiceForm((prev) => ({ ...prev, [field]: value }))}
-                  keyboardType={field === 'price' ? 'decimal-pad' : ['duration_minutes','redeem_points'].includes(field) ? 'number-pad' : 'default'}
-                  placeholder={title}
-                />
+        <Modal visible={showServiceForm} transparent animationType="fade"
+          onRequestClose={closeServiceForm}>
+          <View style={styles.serviceModalOverlay}>
+            <TouchableOpacity style={StyleSheet.absoluteFillObject}
+              accessibilityRole="button" accessibilityLabel="Fechar formulário de serviço"
+              activeOpacity={1} onPress={closeServiceForm} disabled={savingService}/>
+            <View style={styles.serviceModalCard} accessibilityViewIsModal>
+              <View style={styles.serviceModalHeader}>
+                <View style={styles.serviceModalHeading}>
+                  <View style={styles.serviceModalIcon}>
+                    <Ionicons name={editingId ? 'create-outline' : 'add-outline'}
+                      size={23} color={colors.mocha}/>
+                  </View>
+                  <View style={{flex:1}}>
+                    <Text style={styles.serviceModalTitle}>
+                      {editingId ? 'Editar serviço' : 'Novo serviço'}
+                    </Text>
+                    <Text style={styles.serviceModalSubtitle}>
+                      {editingId ? 'Atualize os dados do atendimento' : 'Preencha os dados do novo atendimento'}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={closeServiceForm} disabled={savingService}
+                  accessibilityRole="button" accessibilityLabel="Fechar"
+                  style={styles.serviceModalClose}>
+                  <Ionicons name="close" color={colors.mocha} size={22}/>
+                </TouchableOpacity>
               </View>
-            ))}
-            <TouchableOpacity
-              onPress={() => setServiceForm((prev) => ({ ...prev, active: !prev.active }))}
-              style={{ paddingVertical: 12 }}
-            >
-              <Text style={{ color: colors.ink }}>
-                {serviceForm.active ? '☑ Serviço ativo' : '☐ Serviço desativado'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.confirmButton, savingService && { opacity: 0.6 }]}
-              onPress={saveService}
-              disabled={savingService}
-            >
-              <Text style={styles.confirmButtonText}>{savingService ? 'Salvando...' : 'Salvar serviço'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setShowServiceForm(false); setServiceError(''); }} style={{ padding: 14 }}>
-              <Text style={{ textAlign: 'center', color: colors.mocha }}>Cancelar</Text>
-            </TouchableOpacity>
+
+              <ScrollView style={styles.serviceModalScroll}
+                contentContainerStyle={styles.serviceModalFields}
+                keyboardShouldPersistTaps="handled">
+                {[
+                  ['name', 'Nome do serviço *', 'Ex.: Banho de gel'],
+                  ['description', 'Descrição', 'Descreva o procedimento (opcional)'],
+                  ['price', 'Preço (R$) *', 'Ex.: 120,00'],
+                  ['duration_minutes', 'Duração (minutos) *', 'Ex.: 90'],
+                  ['redeem_points', 'Pontos para resgate *', 'Ex.: 300'],
+                ].map(([field, label, hint]) => (
+                  <View key={field} style={styles.serviceModalField}>
+                    <Text style={styles.serviceModalFieldLabel}>{label}</Text>
+                    <TextInput
+                      style={[styles.serviceModalInput, field === 'description' && styles.serviceModalTextarea]}
+                      value={serviceForm[field]}
+                      onChangeText={(value) => setServiceForm(prev => ({...prev, [field]: value}))}
+                      keyboardType={field === 'price' ? 'decimal-pad' :
+                        ['duration_minutes', 'redeem_points'].includes(field) ? 'number-pad' : 'default'}
+                      placeholder={hint} placeholderTextColor={colors.muted}
+                      accessibilityLabel={label}
+                      multiline={field === 'description'}
+                      textAlignVertical={field === 'description' ? 'top' : 'center'}
+                    />
+                  </View>
+                ))}
+
+                <TouchableOpacity onPress={() => setServiceForm(prev => ({...prev, active: !prev.active}))}
+                  style={styles.serviceModalActive} accessibilityRole="checkbox"
+                  accessibilityState={{checked:serviceForm.active}}>
+                  <Ionicons name={serviceForm.active ? 'checkbox' : 'square-outline'}
+                    size={24} color={colors.mocha}/>
+                  <View style={{flex:1}}>
+                    <Text style={styles.serviceModalActiveTitle}>Serviço ativo</Text>
+                    <Text style={styles.serviceModalActiveHint}>
+                      {serviceForm.active ? 'Visível para agendamento das clientes' : 'Oculto dos novos agendamentos'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                {!!serviceError && <View style={styles.serviceModalErrorBox}>
+                  <Ionicons name="alert-circle-outline" color="#B42318" size={18}/>
+                  <Text style={styles.serviceModalErrorText}>{serviceError}</Text>
+                </View>}
+              </ScrollView>
+
+              <View style={styles.serviceModalActions}>
+                <TouchableOpacity onPress={closeServiceForm} disabled={savingService}
+                  style={styles.serviceModalCancel} accessibilityRole="button">
+                  <Text style={styles.serviceModalCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={saveService} disabled={savingService}
+                  accessibilityRole="button"
+                  style={[styles.serviceModalSave, savingService && {opacity:0.65}]}>
+                  {savingService ? <ActivityIndicator color={colors.white}/> :
+                    <Ionicons name="checkmark-circle-outline" size={18} color={colors.white}/>}
+                  <Text style={styles.serviceModalSaveText}>
+                    {savingService ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Cadastrar serviço'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-        )}
+        </Modal>
         </View>
       )}
       <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
@@ -1324,6 +1382,45 @@ const styles = StyleSheet.create({
     color: colors.ink, fontSize: 12, fontWeight: '600' },
   homeGalleryMessage: { color: colors.mocha, fontSize: 13, paddingVertical: 14 },
   homeNailBookButton: { justifyContent: 'center', marginTop: -13, marginBottom: 10 },
+  serviceModalOverlay: { flex: 1, backgroundColor: 'rgba(28, 25, 23, 0.62)',
+    alignItems: 'center', justifyContent: 'center', padding: 16 },
+  serviceModalCard: { width: '100%', maxWidth: 520, maxHeight: '88%',
+    borderRadius: 22, backgroundColor: colors.white, overflow: 'hidden',
+    shadowColor: '#000000', shadowOpacity: 0.14, shadowRadius: 22, elevation: 12 },
+  serviceModalHeader: { flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', gap: 10, paddingHorizontal: 20, paddingVertical: 17,
+    borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.background },
+  serviceModalHeading: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  serviceModalIcon: { width: 42, height: 42, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.nude },
+  serviceModalTitle: { fontSize: 20, fontWeight: '700', color: colors.ink },
+  serviceModalSubtitle: { marginTop: 4, fontSize: 12, color: colors.mocha },
+  serviceModalClose: { width: 38, height: 38, alignItems: 'center',
+    justifyContent: 'center', borderRadius: 19, backgroundColor: colors.nude },
+  serviceModalScroll: { flexShrink: 1 },
+  serviceModalFields: { paddingHorizontal: 20, paddingTop: 19, paddingBottom: 12 },
+  serviceModalField: { marginBottom: 16 },
+  serviceModalFieldLabel: { fontSize: 13, fontWeight: '700', color: colors.ink, marginBottom: 8 },
+  serviceModalInput: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: colors.ink, minHeight: 48 },
+  serviceModalTextarea: { minHeight: 86 },
+  serviceModalActive: { flexDirection: 'row', gap: 12, alignItems: 'center',
+    padding: 13, borderRadius: 13, backgroundColor: colors.background,
+    borderWidth: 1, borderColor: colors.border, marginBottom: 7 },
+  serviceModalActiveTitle: { fontSize: 14, color: colors.ink, fontWeight: '700' },
+  serviceModalActiveHint: { fontSize: 12, color: colors.mocha, marginTop: 3 },
+  serviceModalErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: '#FFF2F1', padding: 12, borderRadius: 10, marginTop: 10 },
+  serviceModalErrorText: { flex: 1, color: '#B42318', fontSize: 12, lineHeight: 18 },
+  serviceModalActions: { flexDirection: 'row', gap: 10, paddingHorizontal: 20,
+    paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border },
+  serviceModalCancel: { flex: 1, borderRadius: 12, borderWidth: 1,
+    borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
+  serviceModalCancelText: { fontSize: 14, color: colors.mocha, fontWeight: '700' },
+  serviceModalSave: { flex: 1.5, flexDirection: 'row', gap: 7, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center', paddingVertical: 14, backgroundColor: colors.ink },
+  serviceModalSaveText: { color: colors.white, fontSize: 14, fontWeight: '700' },
   servicesGrid: { gap: 12 },
   simpleServiceCard: { padding: 16, backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
   serviceTitle: { fontSize: 15, fontWeight: '600', color: colors.ink, marginBottom: 4 },
