@@ -30,12 +30,7 @@ import {brandColors as colors, homeColors} from './theme/tokens';
 import styles from './appStyles';
 import HomeScreen from './HomeScreen';
 import AdminScreen from './AdminScreen';
-
-import { useClientNotifications } from './hooks/useClientNotifications';
-import { useAdminNotifications } from './hooks/useAdminNotifications';
-import { useStudioServices } from './hooks/useStudioServices';
-import { useAdminTodayStats } from './hooks/useAdminTodayStats';
-import { useHomeInspirations } from './hooks/useHomeInspirations';
+import {localDateKey,futureDates,initialBookableDate,buildCalendar} from './utils/calendar';
 
 // Cores originais importadas de uma fonte de verdade compartilhada.
 
@@ -49,25 +44,208 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [homeName, setHomeName] = useState('');
   const [pointsInitialTab, setPointsInitialTab] = useState('ledger');
   const [pointsReturnScreen, setPointsReturnScreen] = useState('Home');
-  const {
-    notifications, unreadNotifications, appAlertsEnabled, setAppAlertsEnabled,
-    notificationReturnScreen, setNotificationReturnScreen, notificationsLoading,
-    notificationsError, notificationActionSaving, loadNotifications,
-    markNotificationRead,
-  } = useClientNotifications({user,isAdmin,currentScreen});
-  const {
-    adminNotifications, unreadAdminCount, adminNotificationLoading,
-    adminNotificationError, adminNotificationBusy, loadAdminNotifications,
-    markAdminNotificationRead, decideAdminNotification,
-  } = useAdminNotifications({
-    user, isAdmin, currentScreen, onAppointmentChanged: loadAppointments,
-  });
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [appAlertsEnabled, setAppAlertsEnabled] = useState(true);
+  const [notificationReturnScreen, setNotificationReturnScreen] = useState('Home');
+  const [notificationsLoading, setNotificationsLoading] = useState(!!user);
+  const [notificationsError, setNotificationsError] = useState('');
+  const [notificationActionSaving, setNotificationActionSaving] = useState(false);
+  const [adminNotifications, setAdminNotifications] = useState([]);
+  const [unreadAdminCount, setUnreadAdminCount] = useState(0);
+  const [adminNotificationLoading, setAdminNotificationLoading] = useState(!!isAdmin);
+  const [adminNotificationError, setAdminNotificationError] = useState('');
+  const [adminNotificationBusy, setAdminNotificationBusy] = useState(null);
   const displayName = (
     homeName.trim() ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     (user ? 'Cliente' : 'Visitante')
   ).trim().split(/\s+/)[0];
+  useEffect(() => {
+    if(!user?.id || isAdmin)return;
+    let active=true;
+    const loadAppAlerts=async()=>{
+      const {data,error}=await supabase.from('client_care_preferences')
+        .select('app_alerts_enabled').eq('user_id',user.id).maybeSingle();
+      if(active&&!error)setAppAlertsEnabled(data?.app_alerts_enabled!==false);
+    };
+    loadAppAlerts();
+    return()=>{active=false;};
+  },[user?.id,isAdmin,currentScreen]);
+
+  const loadNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    const cutoff = new Date().toISOString();
+    try {
+      const fields = 'id,appointment_id,type,title,body,created_at,visible_at,read_at';
+      const [newItems, oldItems, number] = await Promise.all([
+        supabase.from('notifications')
+          .select(fields)
+          .eq('profile_id', user.id).is('read_at', null)
+          .lte('visible_at', cutoff)
+          .order('visible_at', { ascending: false })
+          .limit(150),
+        supabase.from('notifications')
+          .select(fields)
+          .eq('profile_id', user.id).not('read_at', 'is', null)
+          .lte('visible_at', cutoff)
+          .order('visible_at', { ascending: false })
+          .limit(60),
+        supabase.from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('profile_id', user.id).is('read_at', null)
+          .lte('visible_at', cutoff),
+      ]);
+      if (newItems.error) throw newItems.error;
+      if (oldItems.error) throw oldItems.error;
+      if (number.error) throw number.error;
+      setNotifications([...(newItems.data || []), ...(oldItems.data || [])]);
+      setUnreadNotifications(number.count || 0);
+      setNotificationsError('');
+    } catch (e) {
+      setNotificationsError('Não foi possível carregar as notificações: ' + (e?.message || 'erro desconhecido'));
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setNotifications([]);
+      setUnreadNotifications(0);
+      setNotificationsLoading(false);
+      return;
+    }
+    loadNotifications();
+    const channel = supabase.channel('client-notifications-' + user.id)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'notifications',
+        filter: 'profile_id=eq.' + user.id,
+      }, () => { loadNotifications(); })
+      .subscribe();
+    // Sincroniza mudanças e libera lembretes na hora programada,
+    // mesmo se a conexão Realtime ficar indisponível.
+    const interval = setInterval(loadNotifications, 60000);
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, loadNotifications]);
+
+  useEffect(() => {
+    if (user?.id && (currentScreen === 'Home' || currentScreen === 'Notifications'))
+      loadNotifications();
+  }, [currentScreen, user?.id, loadNotifications]);
+
+  async function markNotificationRead(id = null) {
+    if (!user?.id || notificationActionSaving) return;
+    setNotificationActionSaving(true);
+    try {
+      let query = supabase.from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('profile_id', user.id)
+        .is('read_at', null)
+        .lte('visible_at', new Date().toISOString());
+      if (id) query = query.eq('id', id);
+      const { error } = await query;
+      if (error) throw error;
+      await loadNotifications();
+    } catch (e) {
+      setNotificationsError('Não foi possível atualizar os avisos: ' + (e?.message || 'erro desconhecido'));
+    } finally { setNotificationActionSaving(false); }
+  }
+
+  const loadAdminNotifications = useCallback(async () => {
+    if (!isAdmin || !user?.id) return;
+    try {
+      const fields = 'id,recipient_id,appointment_id,type,priority,title,body,read_at,resolved_at,created_at,appointments(id,starts_at,status,price_at_booking,points_redeemed,notes,services(name,duration_minutes),profiles(full_name,phone))';
+      const [newItems, oldItems, count] = await Promise.all([
+        supabase.from('admin_notifications')
+          .select(fields)
+          .eq('recipient_id',user.id).is('read_at',null)
+          .order('created_at',{ascending:false}).limit(150),
+        supabase.from('admin_notifications')
+          .select(fields)
+          .eq('recipient_id',user.id).not('read_at','is',null)
+          .order('created_at',{ascending:false}).limit(60),
+        supabase.from('admin_notifications')
+          .select('id',{count:'exact',head:true})
+          .eq('recipient_id',user.id).is('read_at',null),
+      ]);
+      if(newItems.error)throw newItems.error;
+      if(oldItems.error)throw oldItems.error;
+      if(count.error)throw count.error;
+      setAdminNotifications([...(newItems.data||[]),...(oldItems.data||[])]);
+      setUnreadAdminCount(count.count||0);
+      setAdminNotificationError('');
+    }catch(e){
+      setAdminNotificationError('Não foi possível consultar os alertas: '+(e?.message||'erro desconhecido'));
+    }finally{setAdminNotificationLoading(false);}
+  },[user?.id,isAdmin]);
+
+  useEffect(()=>{
+    if(!isAdmin||!user?.id){
+      setAdminNotifications([]);setUnreadAdminCount(0);
+      setAdminNotificationLoading(false);
+      return;
+    }
+    loadAdminNotifications();
+    const channel=supabase.channel('admin-operational-alerts-'+user.id)
+      .on('postgres_changes',{
+        event:'*',schema:'public',table:'admin_notifications',
+        filter:'recipient_id=eq.'+user.id,
+      },()=>loadAdminNotifications()).subscribe();
+    const poll=setInterval(loadAdminNotifications,30000);
+    return ()=>{
+      clearInterval(poll);
+      supabase.removeChannel(channel);
+    };
+  },[isAdmin,user?.id,loadAdminNotifications]);
+
+  useEffect(()=>{
+    if(isAdmin&&user?.id&&(currentScreen==='Notifications'||currentScreen==='Home'||currentScreen==='Admin'))
+      loadAdminNotifications();
+  },[currentScreen,isAdmin,user?.id,loadAdminNotifications]);
+
+  async function markAdminNotificationRead(id=null){
+    if(!isAdmin||!user?.id)return;
+    try{
+      let query=supabase.from('admin_notifications')
+        .update({read_at:new Date().toISOString()})
+        .eq('recipient_id',user.id).is('read_at',null);
+      if(id)query=query.eq('id',id);
+      const {error}=await query;
+      if(error)throw error;
+      await loadAdminNotifications();
+    }catch(e){
+      setAdminNotificationError('Não foi possível marcar como lido: '+(e?.message||'erro desconhecido'));
+    }
+  }
+
+  async function decideAdminNotification(item,nextStatus){
+    if(!isAdmin||!user?.id||adminNotificationBusy)throw new Error('Ação indisponível.');
+    if(item.type!=='booking_requested'||!item.appointment_id||
+      !['confirmed','cancelled'].includes(nextStatus))
+      throw new Error('Esta notificação não permite essa ação.');
+    setAdminNotificationBusy(item.id);
+    try{
+      const {data,error}=await supabase.from('appointments')
+        .update({status:nextStatus})
+        .eq('id',item.appointment_id)
+        .eq('status','pending')
+        .select('id,status')
+        .maybeSingle();
+      if(error)throw error;
+      if(!data)throw new Error('Este pedido já foi respondido ou alterado por outra pessoa. Atualize os alertas.');
+      await markAdminNotificationRead(item.id);
+      await loadAppointments();
+    }finally{
+      setAdminNotificationBusy(null);
+      await loadAdminNotifications();
+    }
+  }
+
   useEffect(() => {
     let active = true;
     if (!user?.id) {
@@ -99,8 +277,44 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [showAdminBookingModal, setShowAdminBookingModal] = useState(false);
   const [adminCalendarRefresh, setAdminCalendarRefresh] = useState(0);
   const [adminQuickOpen, setAdminQuickOpen] = useState(false);
-  const {adminTodayStats,adminStatsError,adminStatsLoading,loadAdminTodayStats} =
-    useAdminTodayStats({user,isAdmin,currentScreen,adminSection});
+  const [adminTodayStats, setAdminTodayStats] = useState(null);
+  const [adminStatsError, setAdminStatsError] = useState('');
+  const [adminStatsLoading, setAdminStatsLoading] = useState(false);
+
+  const loadAdminTodayStats = useCallback(async () => {
+    if (!isAdmin || !user?.id) return;
+    setAdminStatsLoading(true);
+    try {
+      const today = localDateKey(new Date());
+      const start = new Date(today + 'T00:00:00-03:00');
+      const end = new Date(start.getTime() + 86400000);
+      const { data, error: queryError } = await supabase.from('appointments')
+        .select('status,price_at_booking')
+        .gte('starts_at', start.toISOString())
+        .lt('starts_at', end.toISOString())
+        .limit(1000);
+      if (queryError) throw queryError;
+      if ((data || []).length === 1000) throw new Error('Volume muito alto; atualize o painel.');
+      const active = (data || []).filter(a =>
+        ['pending','confirmed','completed'].includes(a.status));
+      setAdminTodayStats({
+        visits: active.length,
+        revenue: active.filter(a => a.status === 'completed')
+          .reduce((total,a) => total + Number(a.price_at_booking || 0), 0),
+        cancelled: (data || []).filter(a => a.status === 'cancelled').length,
+      });
+      setAdminStatsError('');
+    } catch (e) {
+      setAdminStatsError('Indicadores indisponíveis. Toque em atualizar.');
+    } finally {setAdminStatsLoading(false);}
+  }, [isAdmin, user?.id]);
+
+  useEffect(() => {
+    if (!isAdmin || currentScreen !== 'Admin') return;
+    loadAdminTodayStats();
+    const id = setInterval(loadAdminTodayStats, 60000);
+    return () => clearInterval(id);
+  }, [isAdmin, currentScreen, adminSection, loadAdminTodayStats]);
 
   function goToAdminSection(section) {
     setAdminQuickOpen(false);
@@ -139,14 +353,61 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       });
     return () => { active = false; };
   }, [user?.id]);
-  const {
-    services, servicesLoading, serviceError, activeServices,
-    savingService, editingId, showServiceForm, serviceForm, setServiceForm,
-    loadServices, beginNewService, beginEditService, closeServiceForm,
-    saveService, toggleService,
-  } = useStudioServices({isAdmin});
-  const {homeInspirations,homeInspirationsLoading,homeInspirationsError} =
-    useHomeInspirations({currentScreen,isAdmin});
+  const [services, setServices] = useState([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [serviceError, setServiceError] = useState('');
+  const [homeInspirations, setHomeInspirations] = useState([]);
+  const [homeInspirationsLoading, setHomeInspirationsLoading] = useState(false);
+  const [homeInspirationsError, setHomeInspirationsError] = useState('');
+
+  // Utiliza o mesmo portfólio público da galeria, sem fotos de exemplo nem dados fictícios.
+  useEffect(() => {
+    if (currentScreen !== 'Home' || isAdmin) return;
+    let active = true;
+    setHomeInspirationsLoading(true);
+    setHomeInspirationsError('');
+    supabase.from('portfolio_photos')
+      .select('id,title,image_path')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(12)
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) throw error;
+        setHomeInspirations((data || []).filter(photo => !!photo.image_path));
+      })
+      .catch(error => {
+        if (active) setHomeInspirationsError('Não foi possível carregar as inspirações.');
+      })
+      .finally(() => { if (active) setHomeInspirationsLoading(false); });
+    return () => { active = false; };
+  }, [currentScreen, isAdmin]);
+  const [savingService, setSavingService] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [showServiceForm, setShowServiceForm] = useState(false);
+  const [serviceForm, setServiceForm] = useState({
+    name: '', description: '', price: '',
+    duration_minutes: '', redeem_points: '300', active: true,
+  });
+
+  async function loadServices() {
+    setServicesLoading(true);
+    setServiceError('');
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('id,name,description,category,price,duration_minutes,active,redeem_points')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      setServices(data || []);
+    } catch (error) {
+      setServiceError('Não foi possível carregar os serviços: ' + error.message);
+    } finally {
+      setServicesLoading(false);
+    }
+  }
+
+  useEffect(() => { loadServices(); }, [isAdmin]);
 
   async function reloadPoints() {
     if (!user) return;
@@ -166,9 +427,84 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     if (user && currentScreen==='Booking' && bookingView==='new') reloadPoints();
   },[user?.id,currentScreen,bookingView]);
 
+  function beginNewService() {
+    setEditingId(null);
+    setServiceForm({ name: '', description: '', price: '', duration_minutes: '', redeem_points: String(300+100*services.length), active: true });
+    setShowServiceForm(true);
+    setServiceError('');
+  }
+
+  function beginEditService(service) {
+    setEditingId(service.id);
+    setServiceForm({
+      name: service.name || '', description: service.description || '',
+      price: String(service.price),
+      duration_minutes: String(service.duration_minutes), redeem_points: String(service.redeem_points || 300), active: service.active,
+    });
+    setShowServiceForm(true);
+    setServiceError('');
+  }
+
+  function closeServiceForm() {
+    if (savingService) return;
+    setShowServiceForm(false);
+    setEditingId(null);
+    setServiceError('');
+  }
+
+  async function saveService() {
+    if (!isAdmin) return;
+    const price = Number(serviceForm.price.replace(',', '.'));
+    const duration = Number(serviceForm.duration_minutes);
+    const redeemPoints=Number(serviceForm.redeem_points);
+    if (!serviceForm.name.trim() || !serviceForm.price.trim() ||
+        !Number.isFinite(price) || price < 0 ||
+        !Number.isInteger(duration) || duration <= 0 ||
+        !Number.isSafeInteger(redeemPoints) || redeemPoints < 1) {
+      setServiceError('Preencha nome, preço, duração e custo de resgate em pontos (inteiro de pelo menos 1).');
+      return;
+    }
+    setSavingService(true);
+    setServiceError('');
+    const payload = {
+      name: serviceForm.name.trim(),
+      description: serviceForm.description.trim() || null,
+      // Categoria é opcional no Supabase e não é solicitada no formulário.
+      // Para serviços já existentes, não alterar a categoria previamente salva.
+      price, duration_minutes: duration, redeem_points: redeemPoints, active: serviceForm.active,
+    };
+    try {
+      const query = editingId
+        ? supabase.from('services').update(payload).eq('id', editingId)
+        : supabase.from('services').insert(payload);
+      const { error } = await query;
+      if (error) throw error;
+      setShowServiceForm(false);
+      setEditingId(null);
+      await loadServices();
+    } catch (error) {
+      setServiceError('Não foi possível salvar: ' + error.message);
+    } finally {
+      setSavingService(false);
+    }
+  }
+
+  async function toggleService(service) {
+    if (!isAdmin) return;
+    setServiceError('');
+    const { error } = await supabase.from('services')
+      .update({ active: !service.active }).eq('id', service.id);
+    if (error) {
+      setServiceError('Não foi possível alterar o serviço: ' + error.message);
+    } else {
+      await loadServices();
+    }
+  }
+
   const money = (value) => Number(value).toLocaleString('pt-BR', {
     style: 'currency', currency: 'BRL',
   });
+  const activeServices = services.filter((service) => service.active);
 
   const dates = futureDates();
   const allowedDateKeys = new Set(dates.map(date => date.key));
