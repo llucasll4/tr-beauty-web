@@ -33,6 +33,7 @@ import AdminScreen from './AdminScreen';
 import {localDateKey,futureDates,initialBookableDate,buildCalendar} from './utils/calendar';
 import { useClientNotifications } from './hooks/useClientNotifications';
 import { useAdminNotifications } from './hooks/useAdminNotifications';
+import { useStudioServices } from './hooks/useStudioServices';
 
 // Cores originais importadas de uma fonte de verdade compartilhada.
 
@@ -172,9 +173,12 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       });
     return () => { active = false; };
   }, [user?.id]);
-  const [services, setServices] = useState([]);
-  const [servicesLoading, setServicesLoading] = useState(true);
-  const [serviceError, setServiceError] = useState('');
+  const {
+    services, servicesLoading, serviceError, activeServices,
+    savingService, editingId, showServiceForm, serviceForm, setServiceForm,
+    loadServices, beginNewService, beginEditService, closeServiceForm,
+    saveService, toggleService,
+  } = useStudioServices({isAdmin});
   const [homeInspirations, setHomeInspirations] = useState([]);
   const [homeInspirationsLoading, setHomeInspirationsLoading] = useState(false);
   const [homeInspirationsError, setHomeInspirationsError] = useState('');
@@ -201,33 +205,6 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       .finally(() => { if (active) setHomeInspirationsLoading(false); });
     return () => { active = false; };
   }, [currentScreen, isAdmin]);
-  const [savingService, setSavingService] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [showServiceForm, setShowServiceForm] = useState(false);
-  const [serviceForm, setServiceForm] = useState({
-    name: '', description: '', price: '',
-    duration_minutes: '', redeem_points: '300', active: true,
-  });
-
-  async function loadServices() {
-    setServicesLoading(true);
-    setServiceError('');
-    try {
-      const { data, error } = await supabase
-        .from('services')
-        .select('id,name,description,category,price,duration_minutes,active,redeem_points')
-        .order('name', { ascending: true });
-      if (error) throw error;
-      setServices(data || []);
-    } catch (error) {
-      setServiceError('Não foi possível carregar os serviços: ' + error.message);
-    } finally {
-      setServicesLoading(false);
-    }
-  }
-
-  useEffect(() => { loadServices(); }, [isAdmin]);
-
   async function reloadPoints() {
     if (!user) return;
     setPointsLoading(true);
@@ -246,84 +223,9 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     if (user && currentScreen==='Booking' && bookingView==='new') reloadPoints();
   },[user?.id,currentScreen,bookingView]);
 
-  function beginNewService() {
-    setEditingId(null);
-    setServiceForm({ name: '', description: '', price: '', duration_minutes: '', redeem_points: String(300+100*services.length), active: true });
-    setShowServiceForm(true);
-    setServiceError('');
-  }
-
-  function beginEditService(service) {
-    setEditingId(service.id);
-    setServiceForm({
-      name: service.name || '', description: service.description || '',
-      price: String(service.price),
-      duration_minutes: String(service.duration_minutes), redeem_points: String(service.redeem_points || 300), active: service.active,
-    });
-    setShowServiceForm(true);
-    setServiceError('');
-  }
-
-  function closeServiceForm() {
-    if (savingService) return;
-    setShowServiceForm(false);
-    setEditingId(null);
-    setServiceError('');
-  }
-
-  async function saveService() {
-    if (!isAdmin) return;
-    const price = Number(serviceForm.price.replace(',', '.'));
-    const duration = Number(serviceForm.duration_minutes);
-    const redeemPoints=Number(serviceForm.redeem_points);
-    if (!serviceForm.name.trim() || !serviceForm.price.trim() ||
-        !Number.isFinite(price) || price < 0 ||
-        !Number.isInteger(duration) || duration <= 0 ||
-        !Number.isSafeInteger(redeemPoints) || redeemPoints < 1) {
-      setServiceError('Preencha nome, preço, duração e custo de resgate em pontos (inteiro de pelo menos 1).');
-      return;
-    }
-    setSavingService(true);
-    setServiceError('');
-    const payload = {
-      name: serviceForm.name.trim(),
-      description: serviceForm.description.trim() || null,
-      // Categoria é opcional no Supabase e não é solicitada no formulário.
-      // Para serviços já existentes, não alterar a categoria previamente salva.
-      price, duration_minutes: duration, redeem_points: redeemPoints, active: serviceForm.active,
-    };
-    try {
-      const query = editingId
-        ? supabase.from('services').update(payload).eq('id', editingId)
-        : supabase.from('services').insert(payload);
-      const { error } = await query;
-      if (error) throw error;
-      setShowServiceForm(false);
-      setEditingId(null);
-      await loadServices();
-    } catch (error) {
-      setServiceError('Não foi possível salvar: ' + error.message);
-    } finally {
-      setSavingService(false);
-    }
-  }
-
-  async function toggleService(service) {
-    if (!isAdmin) return;
-    setServiceError('');
-    const { error } = await supabase.from('services')
-      .update({ active: !service.active }).eq('id', service.id);
-    if (error) {
-      setServiceError('Não foi possível alterar o serviço: ' + error.message);
-    } else {
-      await loadServices();
-    }
-  }
-
   const money = (value) => Number(value).toLocaleString('pt-BR', {
     style: 'currency', currency: 'BRL',
   });
-  const activeServices = services.filter((service) => service.active);
 
   const dates = futureDates();
   const allowedDateKeys = new Set(dates.map(date => date.key));
