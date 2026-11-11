@@ -1,34 +1,72 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
+import { getVipProgress } from './vipProgress';
 
 const C = { ink: '#2C2C2C', mocha: '#7A655B', nude: '#EBE5DF', muted: '#6D625E' };
 const fmtDate = v => new Date(v).toLocaleDateString('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric',
 });
 
-export default function LoyaltyCard({ onOpenDetails }) {
+export default function LoyaltyCard({ userId, refreshSignal = 0, onOpenDetails }) {
   const [summary, setSummary] = useState(null);
+  const [vipSummary, setVipSummary] = useState(null);
+  const [vipSettings, setVipSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const requestRef = useRef(0);
 
-  const load = useCallback(async () => {
-    setLoading(true); setError('');
+  const load = useCallback(async (silent = false) => {
+    if (!userId) return;
+    const requestId = ++requestRef.current;
+    if (!silent) setLoading(true);
     try {
-      const { data, error: e } = await supabase.rpc('get_my_loyalty');
-      if (e) throw e;
-      setSummary(data || null);
+      const [points, vip, thresholds] = await Promise.all([
+        supabase.rpc('get_my_loyalty'),
+        supabase.rpc('get_my_vip_summary'),
+        supabase.from('vip_settings').select('silver_points,gold_points').eq('id', 1).maybeSingle(),
+      ]);
+      const failed = [points, vip, thresholds].find(result => result.error);
+      if (failed) throw failed.error;
+      if (requestId !== requestRef.current) return;
+      setSummary(points.data || null);
+      setVipSummary(vip.data || null);
+      setVipSettings(thresholds.data || null);
+      setError('');
     } catch (e) {
-      setError('Não foi possível consultar TR Points: ' + (e?.message || 'erro desconhecido'));
-    } finally { setLoading(false); }
-  }, []);
+      if (requestId === requestRef.current) {
+        setError('Não foi possível atualizar os TR Points: ' + (e?.message || 'erro desconhecido'));
+      }
+    } finally {
+      if (requestId === requestRef.current) setLoading(false);
+    }
+  }, [userId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    load();
+    // A tabela de pontos não está na publicação Realtime deste Supabase.
+    // Atualização automática enquanto a Home está aberta, ao voltar ao app
+    // e ao retornar à tela inicial depois de uma movimentação.
+    const interval = setInterval(() => load(true), 60000);
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') load(true);
+    });
+    return () => {
+      requestRef.current += 1;
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, [load, userId, refreshSignal]);
+
   const balance = Math.max(0, Number(summary?.balance || 0));
-  const goal = Math.max(1, Number(summary?.goal_points || 300));
-  const progress = Math.min(100, 100 * balance / goal);
+  const vip = getVipProgress(vipSummary, vipSettings);
   const history = Array.isArray(summary?.recent_history) ? summary.recent_history : [];
+  const digits = number => Number(number || 0).toLocaleString('pt-BR');
 
   return (
     <View style={s.card}>
@@ -38,14 +76,40 @@ export default function LoyaltyCard({ onOpenDetails }) {
       </View>
       {loading ? <ActivityIndicator color={C.mocha} style={{ marginVertical: 20 }}/> : (
         <>
-          <Text style={s.balance}>{summary ? balance.toLocaleString('pt-BR') : '—'}</Text>
-          <Text style={s.label}>TR Points</Text>
-          {summary?.enabled && <>
-            <View style={s.track}><View style={[s.fill, { width: progress + '%' }]}/></View>
-            <Text style={s.helper}>{balance >= goal
-              ? 'Você atingiu a meta de ' + goal + ' pontos! Consulte o estúdio sobre os benefícios.'
-              : 'Faltam ' + (goal - balance) + ' pontos para a meta de ' + goal + '.'}</Text>
+          <Text style={s.balance}>{summary ? digits(balance) : '—'}</Text>
+          <Text style={s.label}>TR Points disponíveis</Text>
+          {summary?.enabled && vip && <>
+            <View style={s.levelRow}>
+              <Text style={s.levelLabel}>NÍVEL {vip.tier.toLocaleUpperCase('pt-BR')}</Text>
+              <Text style={s.levelNext}>
+                {vip.nextTier ? 'Próximo: ' + vip.nextTier : 'Nível máximo'}
+              </Text>
+            </View>
+            <View style={s.track} accessibilityRole="progressbar"
+              accessibilityValue={{min:0,max:100,now:Math.round(vip.progress)}}>
+              <View style={[s.fill, { width: vip.progress + '%' }]}/>
+            </View>
+            {vip.nextTier ? <>
+              <Text style={s.goal}>
+                {'Meta para ' + vip.nextTier + ': ' + digits(vip.goal) + ' pontos acumulados'}
+              </Text>
+              <Text style={s.helper}>
+                {digits(vip.lifetime) + ' pontos acumulados · Faltam ' +
+                  digits(vip.remaining) + ' para subir de nível'}
+              </Text>
+            </> : <>
+              <Text style={s.goal}>Você alcançou o nível Ouro! 🏆</Text>
+              <Text style={s.helper}>
+                {digits(vip.lifetime) + ' pontos acumulados · Nível máximo do Clube VIP'}
+              </Text>
+            </>}
+            <Text style={s.note}>
+              A evolução de nível considera pontos acumulados, não o saldo disponível para resgate.
+            </Text>
           </>}
+          {summary?.enabled && !vip && <Text style={s.helper}>
+            Não foi possível consultar a meta do seu nível. Atualize para tentar novamente.
+          </Text>}
           {summary && !summary.enabled && <Text style={s.helper}>O programa de fidelidade está pausado.</Text>}
           {!!error && <Text style={s.error}>{error}</Text>}
           {history.length > 0 && <View style={s.history}>
@@ -64,9 +128,9 @@ export default function LoyaltyCard({ onOpenDetails }) {
         <Text style={s.detailsText}>Ver meu extrato e serviços</Text>
         <Ionicons name="arrow-forward-outline" size={17} color="#FFFFFF"/>
       </TouchableOpacity>
-      <TouchableOpacity style={s.refresh} onPress={load} disabled={loading} accessibilityLabel="Atualizar TR Points">
+      <TouchableOpacity style={s.refresh} onPress={() => load()} disabled={loading} accessibilityLabel="Atualizar TR Points">
         <Ionicons name="refresh" size={15} color={C.mocha}/>
-        <Text style={s.refreshText}>Atualizar saldo</Text>
+        <Text style={s.refreshText}>Atualizar pontos e nível</Text>
       </TouchableOpacity>
     </View>
   );
@@ -78,9 +142,15 @@ const s = StyleSheet.create({
   brand: { fontSize: 12, letterSpacing: 2, fontWeight: '600', color: C.ink },
   balance: { fontSize: 48, fontWeight: '300', color: C.ink, lineHeight: 54 },
   label: { fontSize: 16, fontWeight: '500', color: C.ink, marginBottom: 17 },
+  levelRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
+    alignItems: 'center', gap: 7, marginBottom: 10 },
+  levelLabel: { color: C.ink, fontWeight: '700', fontSize: 12, letterSpacing: 0.6 },
+  levelNext: { color: C.mocha, fontSize: 12, fontWeight: '600' },
   track: { backgroundColor: '#D9D1C7', height: 7, borderRadius: 4, overflow: 'hidden' },
   fill: { backgroundColor: C.ink, height: 7, borderRadius: 4 },
-  helper: { fontSize: 12, color: C.muted, marginTop: 10, lineHeight: 17 },
+  goal: { color: C.ink, fontWeight: '700', fontSize: 12, marginTop: 12, lineHeight: 19 },
+  helper: { fontSize: 12, color: C.muted, marginTop: 6, lineHeight: 18 },
+  note: { fontSize: 11, color: C.mocha, lineHeight: 17, marginTop: 10 },
   error: { color: '#B42318', fontSize: 12, marginTop: 8 },
   history: { borderTopWidth: 1, borderColor: '#D9D1C7', marginTop: 18, paddingTop: 13 },
   historyTitle: { fontSize: 12, fontWeight: '700', color: C.ink, marginBottom: 7 },

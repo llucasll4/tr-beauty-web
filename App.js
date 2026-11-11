@@ -683,7 +683,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
             setCurrentScreen('Booking');
           }}
         />
-        <LoyaltyCard onOpenDetails={() => {
+        <LoyaltyCard userId={user.id} refreshSignal={myAppointmentsRefresh}
+          onOpenDetails={() => {
           setPointsInitialTab('ledger');
           setPointsReturnScreen('Home');
           setCurrentScreen('Points');
