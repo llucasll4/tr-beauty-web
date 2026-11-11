@@ -31,6 +31,8 @@ import styles from './appStyles';
 import HomeScreen from './HomeScreen';
 import AdminScreen from './AdminScreen';
 import {localDateKey,futureDates,initialBookableDate,buildCalendar} from './utils/calendar';
+import { useClientNotifications } from './hooks/useClientNotifications';
+import { useAdminNotifications } from './hooks/useAdminNotifications';
 
 // Cores originais importadas de uma fonte de verdade compartilhada.
 
@@ -44,208 +46,25 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [homeName, setHomeName] = useState('');
   const [pointsInitialTab, setPointsInitialTab] = useState('ledger');
   const [pointsReturnScreen, setPointsReturnScreen] = useState('Home');
-  const [notifications, setNotifications] = useState([]);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [appAlertsEnabled, setAppAlertsEnabled] = useState(true);
-  const [notificationReturnScreen, setNotificationReturnScreen] = useState('Home');
-  const [notificationsLoading, setNotificationsLoading] = useState(!!user);
-  const [notificationsError, setNotificationsError] = useState('');
-  const [notificationActionSaving, setNotificationActionSaving] = useState(false);
-  const [adminNotifications, setAdminNotifications] = useState([]);
-  const [unreadAdminCount, setUnreadAdminCount] = useState(0);
-  const [adminNotificationLoading, setAdminNotificationLoading] = useState(!!isAdmin);
-  const [adminNotificationError, setAdminNotificationError] = useState('');
-  const [adminNotificationBusy, setAdminNotificationBusy] = useState(null);
+  const {
+    notifications, unreadNotifications, appAlertsEnabled, setAppAlertsEnabled,
+    notificationReturnScreen, setNotificationReturnScreen, notificationsLoading,
+    notificationsError, notificationActionSaving, loadNotifications,
+    markNotificationRead,
+  } = useClientNotifications({user,isAdmin,currentScreen});
+  const {
+    adminNotifications, unreadAdminCount, adminNotificationLoading,
+    adminNotificationError, adminNotificationBusy, loadAdminNotifications,
+    markAdminNotificationRead, decideAdminNotification,
+  } = useAdminNotifications({
+    user, isAdmin, currentScreen, onAppointmentChanged: loadAppointments,
+  });
   const displayName = (
     homeName.trim() ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     (user ? 'Cliente' : 'Visitante')
   ).trim().split(/\s+/)[0];
-  useEffect(() => {
-    if(!user?.id || isAdmin)return;
-    let active=true;
-    const loadAppAlerts=async()=>{
-      const {data,error}=await supabase.from('client_care_preferences')
-        .select('app_alerts_enabled').eq('user_id',user.id).maybeSingle();
-      if(active&&!error)setAppAlertsEnabled(data?.app_alerts_enabled!==false);
-    };
-    loadAppAlerts();
-    return()=>{active=false;};
-  },[user?.id,isAdmin,currentScreen]);
-
-  const loadNotifications = useCallback(async () => {
-    if (!user?.id) return;
-    const cutoff = new Date().toISOString();
-    try {
-      const fields = 'id,appointment_id,type,title,body,created_at,visible_at,read_at';
-      const [newItems, oldItems, number] = await Promise.all([
-        supabase.from('notifications')
-          .select(fields)
-          .eq('profile_id', user.id).is('read_at', null)
-          .lte('visible_at', cutoff)
-          .order('visible_at', { ascending: false })
-          .limit(150),
-        supabase.from('notifications')
-          .select(fields)
-          .eq('profile_id', user.id).not('read_at', 'is', null)
-          .lte('visible_at', cutoff)
-          .order('visible_at', { ascending: false })
-          .limit(60),
-        supabase.from('notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('profile_id', user.id).is('read_at', null)
-          .lte('visible_at', cutoff),
-      ]);
-      if (newItems.error) throw newItems.error;
-      if (oldItems.error) throw oldItems.error;
-      if (number.error) throw number.error;
-      setNotifications([...(newItems.data || []), ...(oldItems.data || [])]);
-      setUnreadNotifications(number.count || 0);
-      setNotificationsError('');
-    } catch (e) {
-      setNotificationsError('Não foi possível carregar as notificações: ' + (e?.message || 'erro desconhecido'));
-    } finally {
-      setNotificationsLoading(false);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setNotifications([]);
-      setUnreadNotifications(0);
-      setNotificationsLoading(false);
-      return;
-    }
-    loadNotifications();
-    const channel = supabase.channel('client-notifications-' + user.id)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'notifications',
-        filter: 'profile_id=eq.' + user.id,
-      }, () => { loadNotifications(); })
-      .subscribe();
-    // Sincroniza mudanças e libera lembretes na hora programada,
-    // mesmo se a conexão Realtime ficar indisponível.
-    const interval = setInterval(loadNotifications, 60000);
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, loadNotifications]);
-
-  useEffect(() => {
-    if (user?.id && (currentScreen === 'Home' || currentScreen === 'Notifications'))
-      loadNotifications();
-  }, [currentScreen, user?.id, loadNotifications]);
-
-  async function markNotificationRead(id = null) {
-    if (!user?.id || notificationActionSaving) return;
-    setNotificationActionSaving(true);
-    try {
-      let query = supabase.from('notifications')
-        .update({ read_at: new Date().toISOString() })
-        .eq('profile_id', user.id)
-        .is('read_at', null)
-        .lte('visible_at', new Date().toISOString());
-      if (id) query = query.eq('id', id);
-      const { error } = await query;
-      if (error) throw error;
-      await loadNotifications();
-    } catch (e) {
-      setNotificationsError('Não foi possível atualizar os avisos: ' + (e?.message || 'erro desconhecido'));
-    } finally { setNotificationActionSaving(false); }
-  }
-
-  const loadAdminNotifications = useCallback(async () => {
-    if (!isAdmin || !user?.id) return;
-    try {
-      const fields = 'id,recipient_id,appointment_id,type,priority,title,body,read_at,resolved_at,created_at,appointments(id,starts_at,status,price_at_booking,points_redeemed,notes,services(name,duration_minutes),profiles(full_name,phone))';
-      const [newItems, oldItems, count] = await Promise.all([
-        supabase.from('admin_notifications')
-          .select(fields)
-          .eq('recipient_id',user.id).is('read_at',null)
-          .order('created_at',{ascending:false}).limit(150),
-        supabase.from('admin_notifications')
-          .select(fields)
-          .eq('recipient_id',user.id).not('read_at','is',null)
-          .order('created_at',{ascending:false}).limit(60),
-        supabase.from('admin_notifications')
-          .select('id',{count:'exact',head:true})
-          .eq('recipient_id',user.id).is('read_at',null),
-      ]);
-      if(newItems.error)throw newItems.error;
-      if(oldItems.error)throw oldItems.error;
-      if(count.error)throw count.error;
-      setAdminNotifications([...(newItems.data||[]),...(oldItems.data||[])]);
-      setUnreadAdminCount(count.count||0);
-      setAdminNotificationError('');
-    }catch(e){
-      setAdminNotificationError('Não foi possível consultar os alertas: '+(e?.message||'erro desconhecido'));
-    }finally{setAdminNotificationLoading(false);}
-  },[user?.id,isAdmin]);
-
-  useEffect(()=>{
-    if(!isAdmin||!user?.id){
-      setAdminNotifications([]);setUnreadAdminCount(0);
-      setAdminNotificationLoading(false);
-      return;
-    }
-    loadAdminNotifications();
-    const channel=supabase.channel('admin-operational-alerts-'+user.id)
-      .on('postgres_changes',{
-        event:'*',schema:'public',table:'admin_notifications',
-        filter:'recipient_id=eq.'+user.id,
-      },()=>loadAdminNotifications()).subscribe();
-    const poll=setInterval(loadAdminNotifications,30000);
-    return ()=>{
-      clearInterval(poll);
-      supabase.removeChannel(channel);
-    };
-  },[isAdmin,user?.id,loadAdminNotifications]);
-
-  useEffect(()=>{
-    if(isAdmin&&user?.id&&(currentScreen==='Notifications'||currentScreen==='Home'||currentScreen==='Admin'))
-      loadAdminNotifications();
-  },[currentScreen,isAdmin,user?.id,loadAdminNotifications]);
-
-  async function markAdminNotificationRead(id=null){
-    if(!isAdmin||!user?.id)return;
-    try{
-      let query=supabase.from('admin_notifications')
-        .update({read_at:new Date().toISOString()})
-        .eq('recipient_id',user.id).is('read_at',null);
-      if(id)query=query.eq('id',id);
-      const {error}=await query;
-      if(error)throw error;
-      await loadAdminNotifications();
-    }catch(e){
-      setAdminNotificationError('Não foi possível marcar como lido: '+(e?.message||'erro desconhecido'));
-    }
-  }
-
-  async function decideAdminNotification(item,nextStatus){
-    if(!isAdmin||!user?.id||adminNotificationBusy)throw new Error('Ação indisponível.');
-    if(item.type!=='booking_requested'||!item.appointment_id||
-      !['confirmed','cancelled'].includes(nextStatus))
-      throw new Error('Esta notificação não permite essa ação.');
-    setAdminNotificationBusy(item.id);
-    try{
-      const {data,error}=await supabase.from('appointments')
-        .update({status:nextStatus})
-        .eq('id',item.appointment_id)
-        .eq('status','pending')
-        .select('id,status')
-        .maybeSingle();
-      if(error)throw error;
-      if(!data)throw new Error('Este pedido já foi respondido ou alterado por outra pessoa. Atualize os alertas.');
-      await markAdminNotificationRead(item.id);
-      await loadAppointments();
-    }finally{
-      setAdminNotificationBusy(null);
-      await loadAdminNotifications();
-    }
-  }
-
   useEffect(() => {
     let active = true;
     if (!user?.id) {
