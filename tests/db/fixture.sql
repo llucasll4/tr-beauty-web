@@ -1,5 +1,13 @@
 -- Isolated Postgres 17 fixture. Never touches production Supabase.
 \set ON_ERROR_STOP on
+-- Supabase database roles referenced by the extracted real SQL migration bodies.
+do $roles$
+begin
+  if not exists(select 1 from pg_roles where rolname='anon') then create role anon nologin; end if;
+  if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
+  if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role nologin; end if;
+end $roles$;
+
 create extension if not exists pgcrypto;
 create extension if not exists btree_gist;
 create schema if not exists auth;
