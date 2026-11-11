@@ -144,7 +144,8 @@ async function mockSupabase(page, role) {
 }
 
 async function testPage(browser, baseUrl, name, options, run) {
-  const context = await browser.newContext(options);
+  const {testRole, ...contextOptions} = options;
+  const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
   const failures = [];
   page.on('pageerror', e => failures.push(e?.stack || String(e)));
