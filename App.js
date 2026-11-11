@@ -30,10 +30,12 @@ import {brandColors as colors, homeColors} from './theme/tokens';
 import styles from './appStyles';
 import HomeScreen from './HomeScreen';
 import AdminScreen from './AdminScreen';
-import {localDateKey,futureDates,initialBookableDate,buildCalendar} from './utils/calendar';
+
 import { useClientNotifications } from './hooks/useClientNotifications';
 import { useAdminNotifications } from './hooks/useAdminNotifications';
 import { useStudioServices } from './hooks/useStudioServices';
+import { useAdminTodayStats } from './hooks/useAdminTodayStats';
+import { useHomeInspirations } from './hooks/useHomeInspirations';
 
 // Cores originais importadas de uma fonte de verdade compartilhada.
 
@@ -97,44 +99,8 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
   const [showAdminBookingModal, setShowAdminBookingModal] = useState(false);
   const [adminCalendarRefresh, setAdminCalendarRefresh] = useState(0);
   const [adminQuickOpen, setAdminQuickOpen] = useState(false);
-  const [adminTodayStats, setAdminTodayStats] = useState(null);
-  const [adminStatsError, setAdminStatsError] = useState('');
-  const [adminStatsLoading, setAdminStatsLoading] = useState(false);
-
-  const loadAdminTodayStats = useCallback(async () => {
-    if (!isAdmin || !user?.id) return;
-    setAdminStatsLoading(true);
-    try {
-      const today = localDateKey(new Date());
-      const start = new Date(today + 'T00:00:00-03:00');
-      const end = new Date(start.getTime() + 86400000);
-      const { data, error: queryError } = await supabase.from('appointments')
-        .select('status,price_at_booking')
-        .gte('starts_at', start.toISOString())
-        .lt('starts_at', end.toISOString())
-        .limit(1000);
-      if (queryError) throw queryError;
-      if ((data || []).length === 1000) throw new Error('Volume muito alto; atualize o painel.');
-      const active = (data || []).filter(a =>
-        ['pending','confirmed','completed'].includes(a.status));
-      setAdminTodayStats({
-        visits: active.length,
-        revenue: active.filter(a => a.status === 'completed')
-          .reduce((total,a) => total + Number(a.price_at_booking || 0), 0),
-        cancelled: (data || []).filter(a => a.status === 'cancelled').length,
-      });
-      setAdminStatsError('');
-    } catch (e) {
-      setAdminStatsError('Indicadores indisponíveis. Toque em atualizar.');
-    } finally {setAdminStatsLoading(false);}
-  }, [isAdmin, user?.id]);
-
-  useEffect(() => {
-    if (!isAdmin || currentScreen !== 'Admin') return;
-    loadAdminTodayStats();
-    const id = setInterval(loadAdminTodayStats, 60000);
-    return () => clearInterval(id);
-  }, [isAdmin, currentScreen, adminSection, loadAdminTodayStats]);
+  const {adminTodayStats,adminStatsError,adminStatsLoading,loadAdminTodayStats} =
+    useAdminTodayStats({user,isAdmin,currentScreen,adminSection});
 
   function goToAdminSection(section) {
     setAdminQuickOpen(false);
@@ -179,32 +145,9 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
     loadServices, beginNewService, beginEditService, closeServiceForm,
     saveService, toggleService,
   } = useStudioServices({isAdmin});
-  const [homeInspirations, setHomeInspirations] = useState([]);
-  const [homeInspirationsLoading, setHomeInspirationsLoading] = useState(false);
-  const [homeInspirationsError, setHomeInspirationsError] = useState('');
+  const {homeInspirations,homeInspirationsLoading,homeInspirationsError} =
+    useHomeInspirations({currentScreen,isAdmin});
 
-  // Utiliza o mesmo portfólio público da galeria, sem fotos de exemplo nem dados fictícios.
-  useEffect(() => {
-    if (currentScreen !== 'Home' || isAdmin) return;
-    let active = true;
-    setHomeInspirationsLoading(true);
-    setHomeInspirationsError('');
-    supabase.from('portfolio_photos')
-      .select('id,title,image_path')
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false })
-      .limit(12)
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) throw error;
-        setHomeInspirations((data || []).filter(photo => !!photo.image_path));
-      })
-      .catch(error => {
-        if (active) setHomeInspirationsError('Não foi possível carregar as inspirações.');
-      })
-      .finally(() => { if (active) setHomeInspirationsLoading(false); });
-    return () => { active = false; };
-  }, [currentScreen, isAdmin]);
   async function reloadPoints() {
     if (!user) return;
     setPointsLoading(true);
