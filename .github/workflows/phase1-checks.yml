@@ -24,18 +24,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-      - name: Install aligned Expo SDK52 packages (temporary)
-        run: npm install --no-audit --no-fund
-      - name: Export regenerated lockfile chunks (temporary)
-        run: |
-          node - <<'NODE'
-          const fs=require('node:fs');
-          const source=JSON.stringify(JSON.parse(fs.readFileSync('package-lock.json','utf8')));
-          console.log('EXPO52FIX_TOTAL:'+source.length);
-          for(let i=0;i<source.length;i+=29000){
-            console.log('EXPO52FIX_CHUNK:'+i+':'+source.slice(i,i+29000));
-          }
-          NODE
+      - name: Install dependencies (lockfile)
+        run: npm ci --no-audit --no-fund
       - name: Validate Expo SDK dependency compatibility
         run: npx expo install --check
       - name: Unit tests

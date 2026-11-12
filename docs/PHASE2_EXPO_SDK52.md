@@ -12,12 +12,12 @@ A Expo recomenda atualizações incrementais, versão por versão: https://docs.
 |---|---|---|
 | `expo` | `~51.0.0` | `~52.0.0` (resolvido 52.0.49) |
 | `react` e `react-dom` | 18.2.0 | 18.3.1 |
-| `react-native` | 0.74.1 | 0.76.7 |
+| `react-native` | 0.74.1 | 0.76.9 |
 | `react-native-web` | `~0.19.10` | `~0.19.13` |
 | `@expo/metro-runtime` | `~3.2.3` | `~4.0.1` |
 | `expo-asset` | `~10.0.10` | `~11.0.3` |
 | `expo-font` | `~12.0.10` | `~13.0.3` |
-| `@expo/vector-icons` | 14.0.0 | `^14.0.2` |
+| `@expo/vector-icons` | 14.0.0 | `~14.0.4` |
 
 O `package-lock.json` v3 foi **regenerado em Node 22 dentro do GitHub Actions** com npm limpo. O workflow voltou a usar `npm ci`, não `npm install`, e valida o alinhamento das dependências com `npx expo install --check`. Não regenerar o lockfile manualmente.
 
