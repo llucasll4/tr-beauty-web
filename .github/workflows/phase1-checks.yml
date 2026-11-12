@@ -26,6 +26,8 @@ jobs:
           node-version: '22'
       - name: Install dependencies (lockfile)
         run: npm ci --no-audit --no-fund
+      - name: Validate Expo SDK dependency compatibility
+        run: npx expo install --check
       - name: Unit tests
         run: npm test
       - name: Build Expo web
