@@ -250,7 +250,7 @@ export default function AdminReceipts({year,month,userId}) {
 const s=StyleSheet.create({
   root:{marginTop:22,paddingTop:20,borderTopWidth:1,borderColor:C.border},
   heading:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:15},
-  title:{fontSize:20,fontWeight:'750',color:C.ink},subtitle:{color:C.muted,fontSize:12,marginTop:4},
+  title:{fontSize:20,fontWeight:'700',color:C.ink},subtitle:{color:C.muted,fontSize:12,marginTop:4},
   iconButton:{padding:10,borderRadius:12,borderWidth:1,borderColor:C.border},
   loading:{alignItems:'center',paddingVertical:25,gap:12},
   stats:{flexDirection:'row',flexWrap:'wrap',gap:9,marginVertical:10},
