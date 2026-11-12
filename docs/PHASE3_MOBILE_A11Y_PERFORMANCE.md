@@ -6,7 +6,8 @@ navegação por toque, sem alterar fluxo de agendamento, banco Supabase, valores
 TR Points, autenticação, regras de horários nem design nude/creme.
 
 ## Melhorias
-- Navegação inferior com nomes e estados selecionados explícitos para
+- Navegação inferior com nomes, estado selecionado no sistema nativo e
+  `aria-current="page"` no navegador para
   tecnologias assistivas, mantendo o comportamento anterior.
 - Áreas de toque da navegação inferior, cabeçalho administrativo e botões
   de calendário/retorno ampliadas para **pelo menos 44 x 44 pontos CSS**
