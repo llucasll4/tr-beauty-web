@@ -51,7 +51,7 @@ canal não possui registros.
   configuração do Supabase Auth, fora deste PR.
 
 ## Proteções e testes
-- SQL real em `supabase/migrations/20261112134024_phase3_delivery_monitoring.sql`.
+- SQL real em `supabase/migrations/20261112134721_phase3_delivery_monitoring.sql`.
 - Testes Postgres 17 em ambiente descartável:
   - status por canal, limite de atraso, `processing` e `sent`;
   - recusa para clientes e visitantes, inclusive função privada;
@@ -60,7 +60,7 @@ canal não possui registros.
   - banco de origem não modificado pelo monitoramento.
 - Navegador Chromium com dados fictícios valida navegação e indicadores
   de notificações, incluindo formulário em tela de 390px.
-- Em produção, aplicar migration só após revisão e antes de publicar o frontend.
+- Migração aplicada no Supabase em 12/11/2026, versão `20261112134721`, após CI e revisão. A produção web continua no commit anterior até aprovação e publicação do PR.
   Validar no iPhone e conta Admin. Não criar notificações fictícias em produção.
 
 ## Continuação da Fase 3
