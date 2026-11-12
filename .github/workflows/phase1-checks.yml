@@ -24,21 +24,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-      # Temporary on the upgrade branch only. Before merge revert to npm ci.
-      - name: Install SDK 52 dependency graph for lockfile regeneration
-        run: npm install --no-audit --no-fund
-      - name: Emit clean lockfile in bounded chunks (temporary)
-        run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const lock = JSON.parse(fs.readFileSync('package-lock.json','utf8'));
-          const text = JSON.stringify(lock);
-          const hash = require('node:crypto').createHash('sha256').update(text).digest('hex');
-          console.log('SDK52_LOCK_SHA256:' + hash);
-          for (let i=0; i<text.length; i+=30000)
-            console.log('SDK52_LOCK_CHUNK:' + i + ':' + text.slice(i,i+30000));
-          console.log('SDK52_LOCK_TOTAL:' + text.length);
-          NODE
+      - name: Install dependencies (lockfile)
+        run: npm ci --no-audit --no-fund
+      - name: Validate Expo SDK dependency compatibility
+        run: npx expo install --check
       - name: Unit tests
         run: npm test
       - name: Build Expo web
