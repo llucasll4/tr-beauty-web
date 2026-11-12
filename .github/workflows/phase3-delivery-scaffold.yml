@@ -1,0 +1,35 @@
+# One-time CLI migration scaffold; only triggers on the workflow file itself.
+name: Phase3 delivery migration scaffold
+on:
+  push:
+    branches:
+      - feat/phase3-delivery-monitoring-20261112
+    paths:
+      - .github/workflows/phase3-delivery-scaffold.yml
+permissions:
+  contents: write
+jobs:
+  scaffold:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Create Supabase migration scaffold (pinned CLI v2)
+        run: |
+          set -euo pipefail
+          npm exec --yes --package=supabase@2.81.3 -- supabase migration new phase3_delivery_monitoring
+      - name: Commit scaffold and push to isolated branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/migrations/
+          git commit -m "chore(db): scaffold delivery monitoring migration"
+          git -c 'credential.helper=!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f' push origin "HEAD:${GITHUB_REF_NAME}"
