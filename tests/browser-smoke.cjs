@@ -225,6 +225,31 @@ async function main() {
         await page.getByText('Início',{exact:true}).last().click();
         await page.getByText('Olá, Cliente!').waitFor({state:'visible'});
       });
+    // Critical client paths: points history, service selection and reservation hub.
+    // Requests remain intercepted by fake Supabase; no production booking is made.
+    await testPage(browser,baseUrl,'client-booking-points',
+      {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'client'},
+      async page => {
+        await page.getByText('Olá, Cliente!').waitFor({state:'visible',timeout:25000});
+        await page.getByRole('button',{name:'Ver extrato completo do TR Points'}).click();
+        await page.getByText('Meu TR Points',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Pontos disponíveis para resgate',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Serviços',exact:true}).click();
+        await page.getByText('Seu histórico de serviços aparecerá aqui após a conclusão dos atendimentos.')
+          .waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Extrato',exact:true}).click();
+        await page.getByText('Movimentações de pontos',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Usar TR Points para agendar um serviço'}).click();
+        await page.getByRole('button',{name:'Selecionar Banho de Gel'}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Selecionar Banho de Gel'}).click();
+        await page.getByText('Horário',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Voltar',exact:true}).click();
+        await page.getByRole('button',{name:'Voltar',exact:true}).click();
+        await page.getByText('Meus agendamentos',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Agendar novo horário'}).click();
+        await page.getByRole('button',{name:'Selecionar Alongamento'}).click();
+        await page.getByText('Horário',{exact:true}).waitFor({state:'visible'});
+      });
     await testPage(browser,baseUrl,'admin-session',
       {viewport:{width:1280,height:900},testRole:'admin'},
       async page => {
