@@ -482,25 +482,36 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       <PrivacyNotice visible={privacyVisible} onClose={()=>setPrivacyVisible(false)}/>
 
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Home')}>
+        <TouchableOpacity style={styles.navItem} accessibilityRole="button"
+          accessibilityLabel="Início" accessibilityState={{selected:currentScreen==='Home'}}
+          onPress={() => setCurrentScreen('Home')}>
           <Ionicons name={currentScreen === 'Home' ? 'home' : 'home-outline'} size={24} color={currentScreen === 'Home' ? homeColors.brown : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Home' && styles.navTextActive]}>Início</Text>
         </TouchableOpacity>
         {!isAdmin && <TouchableOpacity style={styles.navItem}
+          accessibilityRole="button" accessibilityLabel={user ? 'Reservas' : 'Agendar'}
+          accessibilityState={{selected:currentScreen==='Booking'}}
           onPress={() => { setCurrentScreen('Booking'); if (user) { setBookingView('hub'); setBookingSuccess(''); } }}>
           <Ionicons name={currentScreen === 'Booking' ? 'calendar' : 'calendar-outline'} size={24} color={currentScreen === 'Booking' ? homeColors.brown : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Booking' && styles.navTextActive]}>{user ? 'Reservas' : 'Agendar'}</Text>
         </TouchableOpacity>}
-        <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Portfolio')}>
+        <TouchableOpacity style={styles.navItem} accessibilityRole="button"
+          accessibilityLabel="Galeria" accessibilityState={{selected:currentScreen==='Portfolio'}}
+          onPress={() => setCurrentScreen('Portfolio')}>
           <Ionicons name={currentScreen === 'Portfolio' ? 'image' : 'image-outline'} size={24} color={currentScreen === 'Portfolio' ? homeColors.brown : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Portfolio' && styles.navTextActive]}>Galeria</Text>
         </TouchableOpacity>
-        {!isAdmin && <TouchableOpacity style={styles.navItem} onPress={() => isAdmin ? (setAdminSection('perfil'),setCurrentScreen('Admin')) : user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
+        {!isAdmin && <TouchableOpacity style={styles.navItem} accessibilityRole="button"
+          accessibilityLabel={user ? 'Perfil' : 'Entrar'}
+          accessibilityState={{selected:currentScreen==='Profile'}}
+          onPress={() => user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
           <Ionicons name={currentScreen === 'Profile' ? 'person' : 'person-outline'} size={24} color={currentScreen === 'Profile' ? homeColors.brown : colors.muted}/>
           <Text style={[styles.navText,currentScreen === 'Profile' && styles.navTextActive]}>{user ? 'Perfil' : 'Entrar'}</Text>
         </TouchableOpacity>}
         {isAdmin && (
-          <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('Admin')}>
+          <TouchableOpacity style={styles.navItem} accessibilityRole="button"
+            accessibilityLabel="Admin" accessibilityState={{selected:currentScreen==='Admin'}}
+            onPress={() => setCurrentScreen('Admin')}>
             <Ionicons name={currentScreen === 'Admin' ? 'settings' : 'settings-outline'} size={24} color={currentScreen === 'Admin' ? homeColors.brown : colors.muted} />
             <Text style={[styles.navText, currentScreen === 'Admin' && styles.navTextActive]}>Admin</Text>
           </TouchableOpacity>
