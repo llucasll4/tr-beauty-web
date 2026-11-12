@@ -111,6 +111,23 @@ async function mockSupabase(page, role) {
               confirmed:0,confirmed_value:0,pending:0,cancelled:0},
             series:[],services:[],
           }
+        : entity === 'p3_delivery_health' ? {
+            as_of:'2026-11-12T13:40:00Z',overdue_threshold_minutes:15,
+            total_overdue:1,total_failed:1,issues_limit:20,
+            channels:[
+              {channel:'email',pending:2,overdue:1,processing:0,sent:4,
+                failed:0,skipped:1,last_sent_at:'2026-11-12T12:00:00Z'},
+              {channel:'whatsapp',pending:0,overdue:0,processing:0,sent:0,
+                failed:1,skipped:0,last_sent_at:null},
+            ],
+            recent_issues:[
+              {channel:'whatsapp',event_type:'booking_confirmed',status:'failed',
+                scheduled_for:'2026-11-12T11:00:00Z',
+                processed_at:'2026-11-12T11:01:00Z',attempts:1},
+              {channel:'email',event_type:'reminder_24h',status:'pending',
+                scheduled_for:'2026-11-12T11:00:00Z',processed_at:null,attempts:0},
+            ],
+          }
         : entity === 'p3_financial_snapshot' ? {
             metrics:{estimated_completed:120,registered_for_services:30,
               unrecorded:90,received_in_period:30,completed_count:1},
@@ -329,6 +346,20 @@ async function main() {
         await page.getByText('Movimentações TR Points',{exact:true}).waitFor({state:'visible'});
         await page.getByRole('button',{name:'Reverificar vínculos da conta'}).click();
         await page.getByText('Registros financeiros',{exact:true}).waitFor({state:'visible'});
+      });
+    await testPage(browser,baseUrl,'admin-delivery-health',
+      {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'admin'},
+      async page => {
+        await page.getByText('Painel Admin 👩‍💻').waitFor({state:'visible',timeout:25000});
+        await page.getByRole('button',{name:'Configurações da administração'}).click();
+        await page.getByRole('button',{name:'Monitoramento de entregas'}).click();
+        await page.getByText('Monitoramento de entregas',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Falhas registradas',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Pendências atrasadas',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Falhas e pendências recentes',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Confirmação de agendamento · WhatsApp',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Atualizar monitoramento'}).click();
+        await page.getByText('Lembrete · E-mail',{exact:true}).waitFor({state:'visible'});
       });
     await testPage(browser,baseUrl,'admin-session',
       {viewport:{width:1280,height:900},testRole:'admin'},

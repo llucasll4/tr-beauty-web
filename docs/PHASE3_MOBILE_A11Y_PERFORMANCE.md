@@ -50,7 +50,7 @@ TR Points, autenticação, regras de horários nem design nude/creme.
 9. Não confirmar agendamentos fictícios na produção.
 
 ## Dependências do roadmap
-O PR #51 de monitoramento de entregas permaneceu separado desta etapa.
-No início desta tarefa, o GitHub estava aprovado mas a Vercel não produziu
-deploy do commit final devido a limite de builds. Não confundir aprovação
-do PR de acessibilidade com publicação do PR de notificações.
+O PR #51 de monitoramento de entregas foi aprovado, incorporado à main
+e publicado antes desta integração. Os testes do monitoramento de notificações
+permanecem na regressão de navegador; este PR trata somente da acessibilidade
+mobile e não altera o banco ou os envios.
