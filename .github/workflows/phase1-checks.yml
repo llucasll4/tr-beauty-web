@@ -91,3 +91,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f tests/db/install-triggers.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261111_phase1_restrict_trigger_rpc.sql
           psql -v ON_ERROR_STOP=1 -f tests/db/regression.sql
+          # New Phase 3 financial schema and RLS exercise the same isolated DB.
+          psql -v ON_ERROR_STOP=1 -f tests/db/phase3-finance-setup.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261112131729_phase3_financial_receipts.sql
+          psql -v ON_ERROR_STOP=1 -f tests/db/phase3-finance-regression.sql

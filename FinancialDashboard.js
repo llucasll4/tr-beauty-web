@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
+import AdminReceipts from './AdminReceipts';
 
 const C = {
   ink: '#2C2C2C', mocha: '#7A655B', white: '#FFFFFF',
@@ -57,7 +58,7 @@ function Metric({ label, value, note, icon, width, green }) {
   );
 }
 
-export default function FinancialDashboard() {
+export default function FinancialDashboard({userId}) {
   const { width: screenWidth } = useWindowDimensions();
   const today = useMemo(saoPauloCurrentDate, []);
   const [year, setYear] = useState(today.year);
@@ -162,8 +163,8 @@ export default function FinancialDashboard() {
       ) : !error ? (
         <>
           <View style={s.metricsGrid}>
-            <Metric label="Receita de atendimentos" value={currency(metrics.revenue)}
-              note="Somente serviços concluídos" icon="cash-outline"
+            <Metric label="Valor de serviços concluídos" value={currency(metrics.revenue)}
+              note="Estimativa; não confirma pagamento" icon="cash-outline"
               width={metricWidth} green/>
             <Metric label="Atendimentos realizados" value={String(count(metrics.completed))}
               note="Marcados como concluídos" icon="checkmark-done-outline" width={metricWidth}/>
@@ -201,7 +202,7 @@ export default function FinancialDashboard() {
           </View>
 
           <View style={s.panel}>
-            <Text style={s.panelTitle}>Receita por serviço</Text>
+            <Text style={s.panelTitle}>Valores estimados por serviço</Text>
             <Text style={s.panelSub}>Distribuição de atendimentos concluídos</Text>
             {services.length === 0 ? (
               <Text style={s.help}>Sem serviços concluídos no período selecionado.</Text>
@@ -245,11 +246,13 @@ export default function FinancialDashboard() {
             </View>
           </View>
 
+          <AdminReceipts year={year} month={mode === 'month' ? month : null} userId={userId}/>
+
           <View style={s.footnote}>
             <Ionicons name="information-circle-outline" color={C.mocha} size={19}/>
             <Text style={s.footnoteText}>
               Os valores usam o preço registrado na reserva e a data do atendimento no horário de Brasília.
-              “Receita” representa o valor dos serviços concluídos, não confirma que o pagamento foi recebido.
+              O valor dos serviços concluídos é uma estimativa, não um pagamento recebido.
               Não inclui despesas, descontos posteriores ou taxas. A atualização não é em tempo real:
               toque em atualizar para buscar os dados mais recentes.
             </Text>
