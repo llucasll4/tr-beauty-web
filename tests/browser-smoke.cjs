@@ -254,7 +254,7 @@ async function main() {
             label+': mobile touch target must be at least 44x44 CSS pixels');
         }
         assert.equal(await page.getByRole('button',{name:'Início',exact:true}).last()
-          .getAttribute('aria-selected'),'true','Início must expose its active state');
+          .getAttribute('aria-current'),'page','Início must expose its current page state');
         const checkWidth=async label=>{
           const dims=await page.evaluate(()=>({
             scrollWidth:document.documentElement.scrollWidth,
