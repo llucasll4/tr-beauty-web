@@ -25,6 +25,8 @@ jobs:
           CI: '1'
         run: |
           set -euo pipefail
+          # The SDK 53 lockfile must not influence resolution of SDK 54 packages.
+          rm -f package-lock.json
           npm install --no-audit --no-fund
           npx expo install --fix --npm
           npx expo install --check
