@@ -137,6 +137,14 @@ async function mockSupabase(page, role) {
           };
           if (!accept.includes('vnd.pgrst.object')) data = [data];
           break;
+        case 'account_deletion_requests':
+          data = role === 'admin' ? [{
+            id:'00000000-0000-4000-8000-000000007777',
+            user_id:'00000000-0000-4000-8000-000000000001',
+            created_at:'2026-11-11T12:00:00Z',
+            status:'pending',response_note:null,handled_at:null,
+          }] : [];
+          break;
         case 'portfolio_photos':
         case 'notifications':
         case 'admin_notifications':
@@ -266,6 +274,20 @@ async function main() {
         await page.getByRole('button',{name:'Agendar novo horário'}).click();
         await page.getByRole('button',{name:'Selecionar Alongamento'}).click();
         await page.getByText('Horário',{exact:true}).waitFor({state:'visible'});
+      });
+    await testPage(browser,baseUrl,'admin-deletion-review',
+      {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'admin'},
+      async page => {
+        await page.getByText('Painel Admin 👩‍💻').waitFor({state:'visible',timeout:25000});
+        await page.getByRole('button',{name:'Configurações da administração'}).click();
+        await page.getByRole('button',{name:'Exclusão de contas'}).click();
+        await page.getByText('Solicitações de privacidade',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Verificar vínculos do pedido de exclusão'}).click();
+        await page.getByText('Verificação de vínculos da conta',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Agendamentos ativos',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Movimentações TR Points',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Reverificar vínculos da conta'}).click();
+        await page.getByText('Registros financeiros',{exact:true}).waitFor({state:'visible'});
       });
     await testPage(browser,baseUrl,'admin-session',
       {viewport:{width:1280,height:900},testRole:'admin'},
