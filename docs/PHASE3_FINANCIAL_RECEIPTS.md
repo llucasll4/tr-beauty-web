@@ -40,7 +40,7 @@ os totais consideram todos.
 
 ## Segurança
 - Migração gerada com Supabase CLI e versionada em
-  `supabase/migrations/20261112125713_phase3_financial_receipts.sql`.
+  `supabase/migrations/20261112131729_phase3_financial_receipts.sql`.
 - RLS habilitada, SELECT/INSERT/UPDATE restritos à Admin usando a função
   existente `private.is_admin()` (sem confiar em `user_metadata`).
 - Apenas colunas específicas são inseríveis/atualizáveis; campos de
@@ -52,17 +52,20 @@ os totais consideram todos.
 - Esta entrega **não** aciona gateway de pagamentos, não envia cobranças,
   não modifica notificações e não altera a geração dos TR Points.
 
-## Plano de ativação
-1. Revisar PR, SQL, RLS e regressões no PostgreSQL descartável (GitHub CI).
-2. Validar a tela no Chromium com Supabase fictício, sem clientes reais.
-3. Verificar o schema novo em ambiente de staging Supabase, se disponível.
-4. **Somente após aprovação explícita**, aplicar a migração ao Supabase do
-   TR Beauty com backup e acompanhar a validação de RLS.
-5. Depois da migração, publicar o PR na Vercel (não inverter a sequência).
-6. Em Safari/iPhone, confirmar painel, lançamento parcial, lançamento integral,
-   anulação, formulário, cliente não-admin e alternância mensal/anual.
-7. Se falhar, bloquear publicação da UI. Reverter deploy web não apaga lançamentos
-   existentes; **não** apagar o ledger automaticamente.
+## Estado de implementação (12/11/2026)
+- [x] Migração financeira aplicada no Supabase **tr-beauty-web** como versão
+  `20261112131729` (registrada no histórico de migrações).
+- [x] A tabela `appointment_payments`, a RPC `p3_financial_snapshot`, RLS
+  e permissões foram verificadas após a aplicação, sem criar lançamentos.
+- [x] A regressão SQL isolada e os testes Chromium passaram no PR #49.
+- [ ] Publicar o frontend após a atualização deste documento e a revisão final do CI.
+- [ ] Validar manualmente no Safari/iPhone com conta Admin e conta Cliente:
+  painel, recebimento parcial/integral, anulação, formulário e período mensal/anual.
+  **Não registrar valores fictícios no ambiente de produção.**
+
+Reverter o deploy web não remove registros financeiros existentes. Para
+eventuais correções estruturais, produzir migração incremental; nunca excluir
+o ledger em produção sem avaliação de preservação de registros.
 
 ## Testes adicionados
 `tests/db/phase3-finance-setup.sql` e `phase3-finance-regression.sql`:
