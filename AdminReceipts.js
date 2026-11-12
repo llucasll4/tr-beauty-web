@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -51,6 +51,7 @@ export default function AdminReceipts({year,month,userId}) {
   const [amount,setAmount]=useState('');
   const [method,setMethod]=useState('pix');
   const [saving,setSaving]=useState(false);
+  const operation=useRef(false);
   const [actionError,setActionError]=useState('');
   const [voidId,setVoidId]=useState(null);
   const [voidReason,setVoidReason]=useState('');
@@ -85,14 +86,14 @@ export default function AdminReceipts({year,month,userId}) {
     setMethod('pix');
   };
   const submit=async()=>{
-    if(!selected||saving)return;
+    if(!selected||saving||operation.current)return;
     const item=data?.appointments?.find(x=>x.id===selected);
     const value=parseAmount(amount);
     if(!item||value===null||Math.round(value*100)>Math.round(Number(item.remaining||0)*100)){
       setActionError('Informe um valor válido, positivo e dentro do saldo sem registro.');
       return;
     }
-    setSaving(true);setActionError('');
+    operation.current=true;setSaving(true);setActionError('');
     try{
       const {error:err}=await supabase.from('appointment_payments').insert({
         appointment_id:selected, amount:value,method,received_at:new Date().toISOString(),
@@ -103,26 +104,27 @@ export default function AdminReceipts({year,month,userId}) {
     }catch(err){
       setActionError('Não foi possível registrar: '+(err.message||'erro desconhecido')+
         '. Atualize o painel antes de tentar novamente.');
-    }finally{setSaving(false);}
+    }finally{operation.current=false;setSaving(false);}
   };
   const voidEntry=async()=>{
-    if(!voidId||saving)return;
+    if(!voidId||saving||operation.current)return;
     if(!userId||voidReason.trim().length<5||voidReason.trim().length>300){
       setActionError('Informe o motivo da anulação com 5 a 300 caracteres.');
       return;
     }
-    setSaving(true);setActionError('');
+    operation.current=true;setSaving(true);setActionError('');
     try{
-      const {error:err}=await supabase.from('appointment_payments')
+      const {data:updated,error:err}=await supabase.from('appointment_payments')
         .update({
           voided_at:new Date().toISOString(), voided_by:userId, void_reason:voidReason.trim(),
-        }).eq('id',voidId).is('voided_at',null);
+        }).eq('id',voidId).is('voided_at',null).select('id').maybeSingle();
       if(err)throw err;
+      if(!updated)throw new Error('Registro não encontrado ou já anulado');
       setVoidId(null);setVoidReason('');
       await load();
     }catch(err){
       setActionError('Falha ao anular o lançamento: '+(err.message||'erro desconhecido'));
-    }finally{setSaving(false);}
+    }finally{operation.current=false;setSaving(false);}
   };
 
   return <View style={s.root}>
