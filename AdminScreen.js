@@ -68,7 +68,7 @@ export default function AdminScreen({
       <View style={styles.adminKpiRow}>
         {[
           ['Atendimentos',adminTodayStats?.visits,'#EBE0D6'],
-          ['Faturamento',adminTodayStats
+          ['Valor concluído (estimado)',adminTodayStats
             ? Number(adminTodayStats.revenue || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
             : null,'#F0E8D8'],
           ['Cancelados',adminTodayStats?.cancelled,'#EBE0D6'],
@@ -127,7 +127,7 @@ export default function AdminScreen({
       {adminSection === 'solicitacoes' && <AdminAccountRequests onBack={() => goToAdminSection('configuracoes')}/>}
       {adminSection === 'clientes' && <AdminClients />}
       {adminSection === 'portfolio' && <PortfolioScreen adminMode services={services} />}
-      {adminSection === 'financeiro' && <FinancialDashboard />}
+      {adminSection === 'financeiro' && <FinancialDashboard userId={user?.id} />}
       {adminSection === 'pontos' && <AdminPointsPrices services={services} onSaved={loadServices} />}
       {adminSection === 'whatsapp' && <AdminWhatsApp/>}
       {adminSection === 'servicos' && (
