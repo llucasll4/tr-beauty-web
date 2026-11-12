@@ -9,6 +9,8 @@ as $$
     where p.id=(select auth.uid()) and p.role='admin');
 $$;
 revoke all on function private.is_admin() from public, anon;
+grant usage on schema auth to authenticated;
+grant execute on function auth.uid() to authenticated;
 grant usage on schema private to authenticated;
 grant execute on function private.is_admin() to authenticated;
 
