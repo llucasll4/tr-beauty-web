@@ -1,5 +1,6 @@
 -- Isolated test support for Phase 3. Never run against production.
 \set ON_ERROR_STOP on
+alter table public.profiles add column if not exists full_name text;
 create schema if not exists private;
 create or replace function private.is_admin()
 returns boolean language sql stable security definer set search_path=''
