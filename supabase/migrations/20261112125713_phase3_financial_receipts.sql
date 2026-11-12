@@ -180,7 +180,7 @@ begin
   select pg_catalog.jsonb_build_object(
     'estimated_completed',coalesce(sum(expected),0),
     'registered_for_services',coalesce(sum(registered),0),
-    'unrecorded',coalesce(sum(pg_catalog.greatest(expected-registered,0)),0),
+    'unrecorded',coalesce(sum(greatest(expected-registered,0)),0),
     'completed_count',count(*),
     'received_in_period',(
       select coalesce(sum(p.amount),0) from public.appointment_payments p
@@ -193,7 +193,7 @@ begin
         'id',items.id,'starts_at',items.starts_at,
         'client',items.client,'service',items.service,
         'price',items.price,'registered',items.registered,
-        'remaining',pg_catalog.greatest(items.price-items.registered,0)
+        'remaining',greatest(items.price-items.registered,0)
       ) order by items.starts_at desc,items.id
     ),'[]'::jsonb) into v_appointments
     from (
