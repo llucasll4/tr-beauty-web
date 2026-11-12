@@ -1,0 +1,36 @@
+# One-time migration scaffold using the pinned Supabase CLI; remove before PR.
+name: Phase 3 — generate Supabase migration scaffold
+on:
+  push:
+    branches: [feat/phase3-financial-receipts-20261112]
+permissions:
+  contents: write
+jobs:
+  scaffold:
+    if: "!contains(github.event.head_commit.message, '[phase3-scaffolded]')"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Generate migration via Supabase CLI v2
+        run: |
+          set -euo pipefail
+          npm exec --yes --package=supabase@2.81.3 -- supabase migration new phase3_financial_receipts
+      - name: Commit scaffold
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- supabase/migrations/
+          git commit -m "chore(db): scaffold phase3 migration with Supabase CLI [phase3-scaffolded]"
+      - name: Push migration scaffold
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git -c 'credential.helper=!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f' push origin "HEAD:${GITHUB_REF_NAME}"
