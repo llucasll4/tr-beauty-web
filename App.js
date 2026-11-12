@@ -484,6 +484,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} accessibilityRole="button"
           accessibilityLabel="Início" accessibilityState={{selected:currentScreen==='Home'}}
+          aria-current={currentScreen==='Home' ? 'page' : undefined}
           onPress={() => setCurrentScreen('Home')}>
           <Ionicons name={currentScreen === 'Home' ? 'home' : 'home-outline'} size={24} color={currentScreen === 'Home' ? homeColors.brown : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Home' && styles.navTextActive]}>Início</Text>
@@ -491,12 +492,14 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         {!isAdmin && <TouchableOpacity style={styles.navItem}
           accessibilityRole="button" accessibilityLabel={user ? 'Reservas' : 'Agendar'}
           accessibilityState={{selected:currentScreen==='Booking'}}
+          aria-current={currentScreen==='Booking' ? 'page' : undefined}
           onPress={() => { setCurrentScreen('Booking'); if (user) { setBookingView('hub'); setBookingSuccess(''); } }}>
           <Ionicons name={currentScreen === 'Booking' ? 'calendar' : 'calendar-outline'} size={24} color={currentScreen === 'Booking' ? homeColors.brown : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Booking' && styles.navTextActive]}>{user ? 'Reservas' : 'Agendar'}</Text>
         </TouchableOpacity>}
         <TouchableOpacity style={styles.navItem} accessibilityRole="button"
           accessibilityLabel="Galeria" accessibilityState={{selected:currentScreen==='Portfolio'}}
+          aria-current={currentScreen==='Portfolio' ? 'page' : undefined}
           onPress={() => setCurrentScreen('Portfolio')}>
           <Ionicons name={currentScreen === 'Portfolio' ? 'image' : 'image-outline'} size={24} color={currentScreen === 'Portfolio' ? homeColors.brown : colors.muted} />
           <Text style={[styles.navText, currentScreen === 'Portfolio' && styles.navTextActive]}>Galeria</Text>
@@ -504,6 +507,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         {!isAdmin && <TouchableOpacity style={styles.navItem} accessibilityRole="button"
           accessibilityLabel={user ? 'Perfil' : 'Entrar'}
           accessibilityState={{selected:currentScreen==='Profile'}}
+          aria-current={currentScreen==='Profile' ? 'page' : undefined}
           onPress={() => user ? setCurrentScreen('Profile') : onRequestAuth('Profile')}>
           <Ionicons name={currentScreen === 'Profile' ? 'person' : 'person-outline'} size={24} color={currentScreen === 'Profile' ? homeColors.brown : colors.muted}/>
           <Text style={[styles.navText,currentScreen === 'Profile' && styles.navTextActive]}>{user ? 'Perfil' : 'Entrar'}</Text>
@@ -511,6 +515,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         {isAdmin && (
           <TouchableOpacity style={styles.navItem} accessibilityRole="button"
             accessibilityLabel="Admin" accessibilityState={{selected:currentScreen==='Admin'}}
+            aria-current={currentScreen==='Admin' ? 'page' : undefined}
             onPress={() => setCurrentScreen('Admin')}>
             <Ionicons name={currentScreen === 'Admin' ? 'settings' : 'settings-outline'} size={24} color={currentScreen === 'Admin' ? homeColors.brown : colors.muted} />
             <Text style={[styles.navText, currentScreen === 'Admin' && styles.navTextActive]}>Admin</Text>
