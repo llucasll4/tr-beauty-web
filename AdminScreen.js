@@ -11,6 +11,7 @@ import PortfolioScreen from './PortfolioScreen';
 import FinancialDashboard from './FinancialDashboard';
 import AdminPointsPrices from './AdminPointsPrices';
 import AdminWhatsApp from './AdminWhatsApp';
+import AdminDeliveryMonitor from './AdminDeliveryMonitor';
 import NailBook from './NailBook';
 import ProfileScreen from './ProfileScreen';
 
@@ -106,6 +107,7 @@ export default function AdminScreen({
           ['solicitacoes','trash-outline','Exclusão de contas','Pedidos das clientes aguardando análise'],
           ['pontos','diamond-outline','TR Points','Valores e regras de pontuação'],
           ['whatsapp','logo-whatsapp','WhatsApp','Integração e comunicação'],
+          ['entregas','pulse-outline','Monitoramento de entregas','Falhas e atrasos de e-mail e WhatsApp'],
           ['portfolio','images-outline','Portfólio','Fotos e inspirações'],
           ['nailbook','book-outline','Nail Book','Histórico e inspirações'],
         ].map(([id,icon,label,description]) =>
@@ -130,6 +132,7 @@ export default function AdminScreen({
       {adminSection === 'financeiro' && <FinancialDashboard userId={user?.id} />}
       {adminSection === 'pontos' && <AdminPointsPrices services={services} onSaved={loadServices} />}
       {adminSection === 'whatsapp' && <AdminWhatsApp/>}
+      {adminSection === 'entregas' && <AdminDeliveryMonitor onBack={() => goToAdminSection('configuracoes')}/>}
       {adminSection === 'servicos' && (
         <View>
         <Text style={styles.sectionTitle}>Gerenciar serviços</Text>
