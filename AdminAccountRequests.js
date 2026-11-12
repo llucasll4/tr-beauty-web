@@ -2,6 +2,7 @@ import React, {useCallback,useEffect,useState} from 'react';
 import {ActivityIndicator,Linking,StyleSheet,Text,TextInput,TouchableOpacity,View} from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import {supabase} from './supabase';
+import AdminDeletionImpact from './AdminDeletionImpact';
 
 const C={ink:'#30231E',mocha:'#7A655B',muted:'#756B65',white:'#FFFFFF',
   brown:'#402816',border:'#E8DED4',red:'#AA4A4C',soft:'#F5EFE8',green:'#287451'};
@@ -23,6 +24,7 @@ export default function AdminAccountRequests({onBack=()=>{}}){
   const [success,setSuccess]=useState('');
   const [responses,setResponses]=useState({});
   const [view,setView]=useState('open');
+  const [impactId,setImpactId]=useState(null);
   const load=useCallback(async()=>{
     setLoading(true);setError('');
     try{
@@ -112,6 +114,16 @@ export default function AdminAccountRequests({onBack=()=>{}}){
       </View>
       <Text style={s.small}>Solicitado em {dateLabel(item.created_at)}</Text>
       <Text style={s.small}>Status: {statusLabel[item.status]||item.status}</Text>
+      <TouchableOpacity accessibilityRole="button"
+        accessibilityLabel="Verificar vínculos do pedido de exclusão"
+        accessibilityState={{expanded:impactId===item.id}}
+        onPress={()=>setImpactId(current=>current===item.id?null:item.id)}
+        style={s.secondary}>
+        <Text style={s.secondaryText}>
+          {impactId===item.id?'Ocultar verificação':'Verificar vínculos antes de excluir'}
+        </Text>
+      </TouchableOpacity>
+      {impactId===item.id&&<AdminDeletionImpact userId={item.user_id}/>}
       {!!item.response_note&&<Text style={s.response}>
         Resposta visível à cliente: {item.response_note}
       </Text>}
@@ -146,8 +158,9 @@ export default function AdminAccountRequests({onBack=()=>{}}){
       {busyId===item.id&&<ActivityIndicator color={C.mocha} style={{marginTop:9}}/>}
     </View>)}
     <Text style={s.footnote}>
-      Processamentos que exijam exclusão efetiva, exportação ou retenção legal
-      devem ser executados por procedimento específico, fora desta tela.
+      A verificação de vínculos é preliminar e não remove contas. A exclusão efetiva,
+      exportação e retenção de registros exigem procedimento seguro e autorização
+      específica. Nunca marque uma conta como excluída apenas por ter respondido.
     </Text>
   </View>;
 }
