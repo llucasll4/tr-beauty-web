@@ -105,7 +105,24 @@ async function mockSupabase(page, role) {
     } else if (url.pathname.includes('/rest/v1/rpc/')) {
       data = entity === 'get_my_loyalty'
         ? {balance:0,enabled:true,lifetime_points:0}
-        : entity === 'available_slots' ? [] : {};
+        : entity === 'available_slots' ? []
+        : entity === 'p6_financial_dashboard' ? {
+            metrics:{completed:1,revenue:120,ticket:120,clients:1,
+              confirmed:0,confirmed_value:0,pending:0,cancelled:0},
+            series:[],services:[],
+          }
+        : entity === 'p3_financial_snapshot' ? {
+            metrics:{estimated_completed:120,registered_for_services:30,
+              unrecorded:90,received_in_period:30,completed_count:1},
+            appointments:[{id:'00000000-0000-4000-8000-000000008888',
+              service:'Banho de Gel',client:'Cliente Fictícia',
+              starts_at:'2026-11-12T16:00:00Z',price:120,registered:30,remaining:90}],
+            receipts:[{id:'00000000-0000-4000-8000-000000009999',
+              appointment_id:'00000000-0000-4000-8000-000000008888',
+              client:'Cliente Fictícia',service:'Banho de Gel',amount:30,
+              method:'pix',received_at:'2026-11-12T17:00:00Z'}],
+            appointments_limit:60,receipts_limit:40,
+          } : {};
     } else {
       switch (entity) {
         case 'services': data = testServices; break;
@@ -257,6 +274,12 @@ async function main() {
         await page.getByText('Indicadores Rápidos (Hoje)').waitFor({state:'visible'});
         await page.getByRole('button',{name:'Configurações da administração'}).click();
         await page.getByText('Configurações do estúdio').waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Métricas'}).click();
+        await page.getByText('Controle de recebimentos',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Sem registro de recebimento',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:/Registrar recebimento para Banho de Gel/}).click();
+        await page.getByRole('textbox',{name:'Valor recebido em reais'}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Cancelar lançamento'}).click();
       });
   } finally {
     if (browser) await browser.close();
