@@ -38,7 +38,7 @@ A cliente nunca é incluída automaticamente por ter conta, telefone ou reserva.
   validade e para clientes que consentiram naquele momento.
 
 ## Banco e segurança
-Migration: `supabase/migrations/20261113133257_phase4_consent_campaigns.sql`
+Migration: `supabase/migrations/20261113134533_phase4_consent_campaigns.sql`
 
 - `public.marketing_campaigns`: RLS; somente Admin pode criar/editar;
   SELECT da cliente exige consentimento atual e campanha publicada válida.
@@ -70,8 +70,9 @@ Migration: `supabase/migrations/20261113133257_phase4_consent_campaigns.sql`
 ## Publicação controlada
 1. CI e prévia Vercel aprovados no último SHA.
 2. Revisão da migration, das permissões e dos relatórios de segurança.
-3. Aplicar migration no Supabase oficial e verificar que há **zero
-   campanhas publicadas e nenhum evento fabricado**.
+3. **Concluído em 13/11/2026:** migration aplicada no Supabase como
+   versão `20261113134533`. Verificado: zero campanhas publicadas,
+   zero eventos fictícios de consentimento e nenhum opt-in pré-ativado.
 4. Só depois fazer merge e publicar frontend na Vercel.
 5. Conferir no Safari/iPhone a visualização com conta Admin e a preferência
    Cliente, sem ativar uma campanha de teste em produção.
