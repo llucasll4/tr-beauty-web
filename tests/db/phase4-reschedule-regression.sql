@@ -20,6 +20,7 @@ declare
   v_bad uuid;
   v_cash_orig numeric;
   v_total bigint;
+  v_points_balance_before bigint;
   v_reversals integer;
   v_blocked boolean;
 begin
@@ -123,6 +124,7 @@ begin
     s60,(v_fri+time '16:00') at time zone 'America/Sao_Paulo');
   select coalesce(sum(points),0) into v_total from public.points_ledger
     where client_id=client1;
+  v_points_balance_before:=v_total;
   update public.services set redeem_points=120 where id=s60;
   v_blocked:=false;
   begin
@@ -148,7 +150,7 @@ begin
   select coalesce(sum(points),0) into v_total from public.points_ledger where client_id=client1;
   select count(*) into v_reversals from public.points_ledger
     where appointment_id=v_points and event_type='reversal';
-  if v_total<>20 or v_reversals<>1 then
+  if v_total<>v_points_balance_before or v_reversals<>1 then
     raise exception 'Points refund/redeem not atomic: balance %, refunds %',v_total,v_reversals;
   end if;
   v_blocked:=false;
