@@ -526,7 +526,7 @@ async function main() {
       async page => {
         await page.getByText('Olá, Cliente!').waitFor({state:'visible',timeout:25000});
         await page.getByRole('button',{name:'Ver extrato completo do TR Points'}).click();
-        await page.getByText('Meu TR Points',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Meus TR Points',{exact:true}).waitFor({state:'visible'});
         await page.getByText('Pontos disponíveis para resgate',{exact:true}).waitFor({state:'visible'});
         await page.getByRole('button',{name:'Serviços',exact:true}).click();
         await page.getByText('Seu histórico de serviços aparecerá aqui após a conclusão dos atendimentos.')
