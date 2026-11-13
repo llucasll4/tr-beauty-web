@@ -8,7 +8,8 @@ export function useHomeInspirations({currentScreen,isAdmin}) {
   const [homeInspirationsLoading, setHomeInspirationsLoading] = useState(false);
   const [homeInspirationsError, setHomeInspirationsError] = useState('');
 
-  // Utiliza o mesmo portfólio público da galeria, sem fotos de exemplo nem dados fictícios.
+  // Home carrega apenas seis prévias para reduzir imagens de rede em celulares.
+  // O catálogo completo segue disponível na tela Galeria.
   useEffect(() => {
     if (currentScreen !== 'Home' || isAdmin) return;
     let active = true;
@@ -18,7 +19,7 @@ export function useHomeInspirations({currentScreen,isAdmin}) {
       .select('id,title,image_path')
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false })
-      .limit(12)
+      .limit(6)
       .then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
