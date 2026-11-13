@@ -71,9 +71,10 @@ visualização da ocupação e o fluxo de confirmação de falta com Supabase
 
 ### Publicação controlada
 1. Aprovar CI e prévia Vercel.
-2. Revisar o SQL: `supabase/migrations/20261113123447_phase4_operational_kpis.sql`.
-3. Antes de expor a UI, aplicar a migração com o histórico real do Supabase,
-   conferir privilégios, RLS e a **quantidade de linhas**.
+2. Revisar o SQL: `supabase/migrations/20261113124654_phase4_operational_kpis.sql`.
+3. **Concluído em 13/11/2026:** migração aplicada no Supabase como versão
+   `20261113124654`, com RLS, privilégios, RPC Admin e contagem de linhas
+   verificados; nenhum atendimento ou TR Points existente foi alterado.
 4. Só após isso publicar o frontend e validar Safari/iPhone em conta Admin.
 5. Não criar ausências ou agendamentos fictícios na produção.
 6. Reverter deploy web não reverte faltas efetivamente registradas. Para
