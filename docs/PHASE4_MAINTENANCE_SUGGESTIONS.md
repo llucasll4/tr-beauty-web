@@ -59,10 +59,10 @@ com erro de consulta, o cartão fica ausente e NÃO inventa uma data.
   confirma que a sugestão não aparece.
 - `npm test`, build web, testes antigos de reserva, reagendamento, TR Points
   e ferramentas Admin permanecem obrigatórios.
-- A migração da branch **não é aplicada automaticamente** em produção.
-  Aplicar somente depois da revisão; verificar histórico Supabase, RLS e
-  que os 6 serviços existentes continuam sem intervalo, então liberar
-  a UI do mesmo commit testado.
+- **Concluído em 13/11/2026:** a migração foi aplicada ao Supabase como
+  versão `20261113130829`. Foram preservados 6 serviços, todos sem intervalo;
+  nenhuma configuração de retorno foi habilitada automaticamente.
+  A interface continua isolada até o PR ser publicado com validação.
 - Em Safari físico, testar como Admin o cadastro de `21` dias em um
   serviço (somente se for um intervalo realmente adequado ao estúdio)
   e como Cliente um atendimento concluído verdadeiro. Não criar
