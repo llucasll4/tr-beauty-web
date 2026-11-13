@@ -110,3 +110,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f tests/db/phase4-operation-regression.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261113130829_phase4_maintenance_intervals.sql
           psql -v ON_ERROR_STOP=1 -f tests/db/phase4-maintenance-regression.sql
+          # Phase 4 Stage 4: consent audit and in-app campaign RLS.
+          # These fixtures use synthetic clients only.
+          psql -v ON_ERROR_STOP=1 -f tests/db/phase4-campaign-setup.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261113133257_phase4_consent_campaigns.sql
+          psql -v ON_ERROR_STOP=1 -f tests/db/phase4-campaign-regression.sql
