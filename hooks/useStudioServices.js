@@ -13,7 +13,7 @@ export function useStudioServices({isAdmin}) {
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [serviceForm, setServiceForm] = useState({
     name: '', description: '', price: '',
-    duration_minutes: '', redeem_points: '300', active: true,
+    duration_minutes: '', redeem_points: '300', maintenance_interval_days: '', active: true,
   });
 
   async function loadServices() {
@@ -22,7 +22,7 @@ export function useStudioServices({isAdmin}) {
     try {
       const { data, error } = await supabase
         .from('services')
-        .select('id,name,description,category,price,duration_minutes,active,redeem_points')
+        .select('id,name,description,category,price,duration_minutes,active,redeem_points,maintenance_interval_days')
         .order('name', { ascending: true });
       if (error) throw error;
       setServices(data || []);
@@ -38,7 +38,7 @@ export function useStudioServices({isAdmin}) {
 
   function beginNewService() {
     setEditingId(null);
-    setServiceForm({ name: '', description: '', price: '', duration_minutes: '', redeem_points: String(300+100*services.length), active: true });
+    setServiceForm({ name: '', description: '', price: '', duration_minutes: '', redeem_points: String(300+100*services.length), maintenance_interval_days: '', active: true });
     setShowServiceForm(true);
     setServiceError('');
   }
@@ -48,7 +48,8 @@ export function useStudioServices({isAdmin}) {
     setServiceForm({
       name: service.name || '', description: service.description || '',
       price: String(service.price),
-      duration_minutes: String(service.duration_minutes), redeem_points: String(service.redeem_points || 300), active: service.active,
+      duration_minutes: String(service.duration_minutes), redeem_points: String(service.redeem_points || 300),
+      maintenance_interval_days: service.maintenance_interval_days == null ? '' : String(service.maintenance_interval_days), active: service.active,
     });
     setShowServiceForm(true);
     setServiceError('');
@@ -66,11 +67,14 @@ export function useStudioServices({isAdmin}) {
     const price = Number(serviceForm.price.replace(',', '.'));
     const duration = Number(serviceForm.duration_minutes);
     const redeemPoints=Number(serviceForm.redeem_points);
+    const cadenceText=String(serviceForm.maintenance_interval_days ?? '').trim();
+    const maintenanceDays=cadenceText ? Number(cadenceText) : null;
     if (!serviceForm.name.trim() || !serviceForm.price.trim() ||
         !Number.isFinite(price) || price < 0 ||
         !Number.isInteger(duration) || duration <= 0 ||
-        !Number.isSafeInteger(redeemPoints) || redeemPoints < 1) {
-      setServiceError('Preencha nome, preço, duração e custo de resgate em pontos (inteiro de pelo menos 1).');
+        !Number.isSafeInteger(redeemPoints) || redeemPoints < 1 ||
+        (maintenanceDays !== null && (!Number.isSafeInteger(maintenanceDays) || maintenanceDays < 14 || maintenanceDays > 90))) {
+      setServiceError('Preencha nome, preço, duração e pontos; manutenção é opcional, entre 14 e 90 dias inteiros.');
       return;
     }
     setSavingService(true);
@@ -80,7 +84,8 @@ export function useStudioServices({isAdmin}) {
       description: serviceForm.description.trim() || null,
       // Categoria é opcional no Supabase e não é solicitada no formulário.
       // Para serviços já existentes, não alterar a categoria previamente salva.
-      price, duration_minutes: duration, redeem_points: redeemPoints, active: serviceForm.active,
+      price, duration_minutes: duration, redeem_points: redeemPoints,
+      maintenance_interval_days: maintenanceDays, active: serviceForm.active,
     };
     try {
       const query = editingId
