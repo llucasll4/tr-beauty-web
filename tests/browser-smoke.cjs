@@ -106,6 +106,11 @@ async function mockSupabase(page, role) {
       data = entity === 'get_my_loyalty'
         ? {balance:0,enabled:true,lifetime_points:0}
         : entity === 'available_slots' ? []
+        : entity === 'available_reschedule_slots' ? [{
+            starts_at:(request.postDataJSON()?.p_date||'2030-03-15')+'T15:00:00.000Z',
+          }]
+        : entity === 'reschedule_appointment'
+          ? '00000000-0000-4000-8000-000000009998'
         : entity === 'p6_financial_dashboard' ? {
             metrics:{completed:1,revenue:120,ticket:120,clients:1,
               confirmed:0,confirmed_value:0,pending:0,cancelled:0},
@@ -166,6 +171,15 @@ async function mockSupabase(page, role) {
         case 'notifications':
         case 'admin_notifications':
         case 'appointments':
+          data = role === 'reschedule' ? [{
+            id:'00000000-0000-4000-8000-000000008881',
+            client_id:'00000000-0000-4000-8000-000000000001',
+            starts_at:new Date(Date.now()+14*86400000).toISOString(),
+            ends_at:new Date(Date.now()+14*86400000+90*60000).toISOString(),
+            status:'confirmed',price_at_booking:120,points_redeemed:null,
+            services:{name:'Banho de Gel'}
+          }] : [];
+          break;
         case 'points_ledger':
         case 'client_care_preferences':
         default: data = [];
@@ -310,6 +324,28 @@ async function main() {
       });
     // Critical client paths: points history, service selection and reservation hub.
     // Requests remain intercepted by fake Supabase; no production booking is made.
+    await testPage(browser,baseUrl,'client-reschedule-flow',
+      {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'reschedule'},
+      async page => {
+        const submissions=[];
+        page.on('request',request=>{
+          if(request.url().includes('/rpc/reschedule_appointment'))
+            submissions.push(request.postDataJSON());
+        });
+        await page.getByText('Olá, Cliente!').waitFor({state:'visible',timeout:25000});
+        await page.getByRole('button',{name:'Reservas',exact:true}).last().click();
+        await page.getByText('Meus agendamentos',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Reagendar Banho de Gel'}).click();
+        await page.getByText('Escolha um novo horário',{exact:true}).waitFor({state:'visible'});
+        await page.getByText(/O novo pedido precisará ser aprovado novamente/).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Novo horário 12:00'}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Novo horário 12:00'}).click();
+        await page.getByRole('button',{name:'Confirmar reagendamento'}).click();
+        await page.getByText(/Novo horário solicitado para/).waitFor({state:'visible'});
+        assert.equal(submissions.length,1,'Reschedule RPC must be invoked exactly once');
+        assert.equal(submissions[0].p_appointment_id,
+          '00000000-0000-4000-8000-000000008881');
+      });
     await testPage(browser,baseUrl,'client-booking-points',
       {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'client'},
       async page => {
