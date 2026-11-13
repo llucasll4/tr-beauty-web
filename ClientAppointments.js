@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
+import ClientReschedule from './ClientReschedule';
 
 const C = {
   bg: '#FDFBF7', white: '#FFFFFF', ink: '#2C2C2C',
@@ -37,7 +38,7 @@ function isUpcoming(item, now) {
     (item.status === 'pending' || item.status === 'confirmed');
 }
 
-export default function ClientAppointments({ userId, onNewBooking, refreshSignal = 0, notice = '' }) {
+export default function ClientAppointments({ userId, onNewBooking, onRescheduled = () => {}, refreshSignal = 0, notice = '' }) {
   const [appointments, setAppointments] = useState([]);
   const [view, setView] = useState('upcoming');
   const [loading, setLoading] = useState(true);
@@ -45,6 +46,8 @@ export default function ClientAppointments({ userId, onNewBooking, refreshSignal
   const [error, setError] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [asOf, setAsOf] = useState(Date.now());
+  const [reschedulingId,setReschedulingId] = useState(null);
+  const [rescheduleNotice,setRescheduleNotice] = useState('');
 
   const PAGE_SIZE = 50;
   const getPage = useCallback(async (from) => {
@@ -121,10 +124,10 @@ export default function ClientAppointments({ userId, onNewBooking, refreshSignal
           <Ionicons name="add-circle-outline" size={23} color={C.white}/>
           <Text style={s.primaryText}>Novo agendamento</Text>
         </TouchableOpacity>
-        {!!notice && (
+        {!!(notice || rescheduleNotice) && (
           <View style={s.notice}>
             <Ionicons name="checkmark-circle-outline" color={C.green} size={22}/>
-            <Text style={s.noticeText}>{notice}</Text>
+            <Text style={s.noticeText}>{rescheduleNotice || notice}</Text>
           </View>
         )}
         <View style={s.tabs}>
@@ -195,6 +198,30 @@ export default function ClientAppointments({ userId, onNewBooking, refreshSignal
                 <Text style={s.value}>{item.points_redeemed ?
                   Number(item.points_redeemed).toLocaleString('pt-BR')+' pts' : money(item.price_at_booking)}</Text>
               </View>
+              {isUpcoming(item,asOf) && new Date(item.starts_at).getTime() > Date.now()+86400000 && <>
+                <TouchableOpacity accessibilityRole="button"
+                  accessibilityLabel={'Reagendar '+serviceName(item.services)}
+                  onPress={()=>{
+                    setRescheduleNotice('');
+                    setReschedulingId(id=>id===item.id?null:item.id);
+                  }} style={s.rescheduleButton}>
+                  <Ionicons name="calendar-outline" color={C.mocha} size={17}/>
+                  <Text style={s.rescheduleButtonText}>
+                    {reschedulingId===item.id?'Fechar reagendamento':'Reagendar horário'}
+                  </Text>
+                </TouchableOpacity>
+                {reschedulingId===item.id&&<ClientReschedule appointment={item}
+                  onClose={()=>setReschedulingId(null)}
+                  onSuccess={newStart=>{
+                    setReschedulingId(null);
+                    setRescheduleNotice('Novo horário solicitado para '+new Date(newStart).toLocaleString('pt-BR',{
+                      timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',
+                      hour:'2-digit',minute:'2-digit'
+                    })+'. O estúdio precisa confirmar o pedido.');
+                    onRescheduled();
+                    load();
+                  }}/>} 
+              </>}
               {item.status === 'pending' && (
                 <Text style={s.statusNote}>O estúdio ainda precisa confirmar seu pedido.</Text>
               )}
@@ -256,6 +283,10 @@ const s = StyleSheet.create({
   valueLabel: { color: C.muted, fontSize: 12 },
   value: { color: C.ink, fontWeight: '700', fontSize: 15 },
   statusNote: { color: C.muted, marginTop: 12, fontSize: 12, lineHeight: 18 },
+  rescheduleButton: { marginTop: 12, borderWidth: 1, borderColor: C.border,
+    borderRadius: 11, minHeight: 44, paddingHorizontal: 12, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.soft },
+  rescheduleButtonText: { color: C.mocha, fontSize: 13, fontWeight: '700' },
   loadMore: { marginTop: 8, alignItems: 'center', padding: 15, borderRadius: 11, backgroundColor: C.soft },
   loadMoreText: { color: C.mocha, fontWeight: '700' },
 });
