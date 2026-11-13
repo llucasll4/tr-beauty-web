@@ -309,6 +309,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         />}
         {currentScreen === 'Booking' && !isAdmin && (user && bookingView !== 'new' ? (
           <ClientAppointments userId={user.id}
+            onRescheduled={() => setMyAppointmentsRefresh(v => v + 1)}
             refreshSignal={myAppointmentsRefresh}
             notice={bookingSuccess}
             onNewBooking={() => { setBookingSuccess('');setBookingStartStep(1);setPaymentMethod('cash');setBookingView('new'); }}/>
