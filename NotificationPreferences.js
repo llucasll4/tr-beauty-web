@@ -105,9 +105,9 @@ export default function NotificationPreferences({ userId }) {
               accessibilityLabel="Autorizar notificações por WhatsApp"/>
           </View>
           <Text style={s.foot}>
-            Sem mensagens promocionais. Salve seu número de telefone no perfil
-            antes de ativar o WhatsApp. Esta opção só enviará mensagens após
-            a ativação dos provedores pelo estúdio.
+            Esses avisos são sobre seus agendamentos, não sobre promoções.
+            Para receber pelo WhatsApp, mantenha seu telefone atualizado no perfil.
+            O envio depende da disponibilidade desse canal no estúdio.
           </Text>
           {!!message && <Text style={[s.notice, isError && s.error]}>{message}</Text>}
           <TouchableOpacity onPress={save} disabled={saving} style={s.button}>

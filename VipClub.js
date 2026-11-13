@@ -91,19 +91,19 @@ export default function VipClub(){
         <View style={s.benefitRow}><Ionicons name="gift-outline" size={20} color={C.mocha}/>
           <Text style={s.benefitText}>Aniversário: {config.birthday_enabled?
             '+'+digits(config.birthday_bonus)+' pontos no mês do aniversário, após um atendimento elegível':
-            'Campanha aguardando ativação pelo estúdio'}</Text></View>
+            'Benefício não disponível no momento'}</Text></View>
         <View style={s.benefitRow}><Ionicons name="people-outline" size={20} color={C.mocha}/>
           <Text style={s.benefitText}>Indicações: {config.referrals_enabled?
             '+'+digits(config.referral_bonus)+' pontos quando a indicada conclui o primeiro serviço pago':
-            'Campanha aguardando ativação pelo estúdio'}</Text></View>
+            'Benefício não disponível no momento'}</Text></View>
         <View style={s.benefitRow}><Ionicons name="repeat-outline" size={20} color={C.mocha}/>
           <Text style={s.benefitText}>Frequência: {config.frequency_enabled?
             '+'+digits(config.frequency_bonus)+' pontos a cada '+digits(config.frequency_every)+' atendimentos pagos':
-            'Campanha aguardando ativação pelo estúdio'}</Text></View>
+            'Benefício não disponível no momento'}</Text></View>
       </View>
       <View style={s.section}>
-        <Text style={s.sectionTitle}>Indique e ganhe</Text>
-        <Text style={s.text}>Compartilhe seu código com alguém que ainda não realizou um atendimento.</Text>
+        <Text style={s.sectionTitle}>Suas indicações</Text>
+        <Text style={s.text}>Compartilhe seu código com quem ainda não conhece o estúdio. Os bônus são concedidos somente nas campanhas ativas.</Text>
         <View style={s.code}><Text selectable style={s.codeText}>{myCode||'Indisponível'}</Text></View>
         <Text style={s.small}>Indicações premiadas: {digits(stats.successful_referrals)}. O bônus só é aplicado quando a campanha está ativa e a indicada conclui o primeiro atendimento pago.</Text>
         <Text style={[s.sectionTitle,{marginTop:20}]}>Tenho um código de indicação</Text>
@@ -114,7 +114,7 @@ export default function VipClub(){
             <Text style={s.buttonText}>Aplicar</Text>
           </TouchableOpacity>
         </View>
-        <Text style={s.small}>Vincule o código antes do seu primeiro atendimento. Telefones distintos são exigidos para reduzir indicações indevidas.</Text>
+        <Text style={s.small}>Cadastre o código antes do primeiro atendimento. Cada indicação precisa ter um número de celular diferente.</Text>
       </View>
       <View style={s.section}>
         <Text style={s.sectionTitle}>Seu aniversário 🎂</Text>
@@ -129,7 +129,7 @@ export default function VipClub(){
               <Text style={s.buttonText}>Salvar</Text>
             </TouchableOpacity>
           </View>
-          <Text style={s.small}>Para receber eventual bônus de aniversário, a data deve estar cadastrada há pelo menos 30 dias e a campanha precisa estar ativada.</Text>
+          <Text style={s.small}>Se houver campanha de aniversário ativa, o bônus exige que sua data esteja cadastrada há pelo menos 30 dias.</Text>
         </>}
       </View>
     </>}

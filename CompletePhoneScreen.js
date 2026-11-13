@@ -34,11 +34,11 @@ export default function CompletePhoneScreen({ user, onSaved, onLogout }) {
         .select('id,phone').single();
       if (saveError) throw saveError;
       if (normalizeBrazilMobile(data?.phone) !== mobile) {
-        throw new Error('O telefone não foi confirmado pelo servidor.');
+        throw new Error('Não conseguimos confirmar seu celular. Tente novamente.');
       }
       onSaved();
     } catch (err) {
-      setError('Não foi possível salvar seu celular: ' + (err?.message || 'tente novamente.'));
+      setError('Não conseguimos salvar seu celular agora. Tente novamente.');
     } finally {
       setBusy(false);
     }

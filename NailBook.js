@@ -163,8 +163,8 @@ export default function NailBook({clientId,adminMode=false,onBack=()=>{},onRepea
         <View style={s.hero}>
           <Ionicons name="images-outline" size={31} color={C.mocha}/>
           <View style={{flex:1}}>
-            <Text style={s.heroTitle}>Seu catálogo de beleza</Text>
-            <Text style={s.helper}>{entries.length} registro{entries.length===1?'':'s'} · Fotos privadas</Text>
+            <Text style={s.heroTitle}>Seu álbum de inspirações</Text>
+            <Text style={s.helper}>{entries.length} registro{entries.length===1?'':'s'} · Seus estilos favoritos</Text>
           </View>
           <TouchableOpacity style={s.addButton} onPress={()=>setShowForm(v=>!v)}
             accessibilityRole="button">

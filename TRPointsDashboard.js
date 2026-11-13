@@ -148,7 +148,7 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
         <Ionicons name="arrow-back-outline" size={23} color={C.ink}/>
       </TouchableOpacity>
       <View style={{flex:1}}>
-        <Text style={s.headTitle}>Meu TR Points</Text>
+        <Text style={s.headTitle}>Meus TR Points</Text>
         <Text style={s.headSubtitle}>Saldo, extrato e histórico de serviços</Text>
       </View>
       <TouchableOpacity accessibilityRole="button" accessibilityLabel="Atualizar TR Points"
@@ -302,8 +302,8 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
           </View>
           <Text style={s.infoText}>
             {overview?.enabled
-              ? 'A pontuação é calculada após o estúdio marcar o atendimento como concluído. Taxa atual: '+
-                digits(overview.points_per_real)+' ponto(s) por R$ 1,00 no programa.'
+              ? 'Os pontos são creditados após a conclusão do atendimento. Atualmente, você ganha '+
+                digits(overview.points_per_real)+' '+(Number(overview.points_per_real)===1?'ponto':'pontos')+' a cada R$ 1,00.'
               : 'O programa de pontos está pausado. Seu histórico continua disponível.'}
           </Text>
           <Text style={s.infoText}>
