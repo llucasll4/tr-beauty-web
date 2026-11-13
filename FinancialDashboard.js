@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import AdminReceipts from './AdminReceipts';
+import AdminOperationalMetrics from './AdminOperationalMetrics';
 
 const C = {
   ink: '#2C2C2C', mocha: '#7A655B', white: '#FFFFFF',
@@ -246,6 +247,7 @@ export default function FinancialDashboard({userId}) {
             </View>
           </View>
 
+          <AdminOperationalMetrics year={year} month={mode === 'month' ? month : null} userId={userId}/>
           <AdminReceipts year={year} month={mode === 'month' ? month : null} userId={userId}/>
 
           <View style={s.footnote}>

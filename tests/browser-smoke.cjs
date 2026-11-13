@@ -90,6 +90,7 @@ function fakeSession(role) {
 }
 
 async function mockSupabase(page, role) {
+  let noShowRecorded = false;
   await page.route('https://example.supabase.co/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -111,6 +112,24 @@ async function mockSupabase(page, role) {
           }]
         : entity === 'reschedule_appointment'
           ? '00000000-0000-4000-8000-000000009998'
+        : entity === 'p4_operational_metrics' ? {
+            year:2026,month:11,timezone:'America/Sao_Paulo',
+            minutes:{capacity:10200,booked:4000,blocked:120},
+            metrics:{bookings:10,cancelled:1,rescheduled:2,
+              completed:4,confirmed_no_shows:noShowRecorded?1:0,
+              unreviewed_confirmed:noShowRecorded?0:1,unconfirmed_past:0,
+              attended_or_absent:noShowRecorded?5:4},
+            review:[{
+              id:'00000000-0000-4000-8000-000000008881',
+              starts_at:'2026-11-10T12:00:00Z',
+              ends_at:'2026-11-10T13:00:00Z',
+              client:'Cliente Fictícia',
+              service:'Banho de Gel',status:'confirmed',
+              no_show_id:noShowRecorded
+                ? '00000000-0000-4000-8000-000000008889':null,
+            }],
+            review_limit:40,
+          }
         : entity === 'p6_financial_dashboard' ? {
             metrics:{completed:1,revenue:120,ticket:120,clients:1,
               confirmed:0,confirmed_value:0,pending:0,cancelled:0},
@@ -179,6 +198,10 @@ async function mockSupabase(page, role) {
             status:'confirmed',price_at_booking:120,points_redeemed:null,
             services:{name:'Banho de Gel'}
           }] : [];
+          break;
+        case 'appointment_no_shows':
+          if (request.method()==='POST') noShowRecorded=true;
+          data=[];
           break;
         case 'points_ledger':
         case 'client_care_preferences':
@@ -396,6 +419,23 @@ async function main() {
         await page.getByText('Confirmação de agendamento · WhatsApp',{exact:true}).waitFor({state:'visible'});
         await page.getByRole('button',{name:'Atualizar monitoramento'}).click();
         await page.getByText('Lembrete · E-mail',{exact:true}).waitFor({state:'visible'});
+      });
+    await testPage(browser,baseUrl,'admin-operational-kpis',
+      {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'admin'},
+      async page => {
+        await page.getByText('Painel Admin 👩‍💻').waitFor({state:'visible',timeout:25000});
+        await page.getByRole('button',{name:'Métricas'}).click();
+        await page.getByText('Indicadores de operação',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Ocupação da agenda',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Cancelamentos',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Pendentes de verificação',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Registrar falta confirmada'}).click();
+        await page.getByText('Confirmar que a cliente não compareceu?',{exact:true})
+          .waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Confirmar registro de falta'}).click();
+        await page.getByText('Falta registrada. O histórico foi preservado.',{exact:true})
+          .waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Reverter falta registrada'}).waitFor({state:'visible'});
       });
     await testPage(browser,baseUrl,'admin-session',
       {viewport:{width:1280,height:900},testRole:'admin'},
