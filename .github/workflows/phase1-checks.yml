@@ -103,3 +103,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f tests/db/phase4-reschedule-setup.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261113122237_phase4_client_rescheduling.sql
           psql -v ON_ERROR_STOP=1 -f tests/db/phase4-reschedule-regression.sql
+          # Phase 4 stage 2: occupancy and audited no-shows are exercised
+          # only in an isolated PostgreSQL; never with client production data.
+          psql -v ON_ERROR_STOP=1 -f tests/db/phase4-operation-setup.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261113123447_phase4_operational_kpis.sql
+          psql -v ON_ERROR_STOP=1 -f tests/db/phase4-operation-regression.sql
