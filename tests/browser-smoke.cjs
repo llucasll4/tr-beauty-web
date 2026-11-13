@@ -366,7 +366,7 @@ async function main() {
       async page => {
         const bookings=[];
         page.on('request',request=>{
-          if(/\\/rpc\\/book_appointment(?:_with_points)?$/.test(request.url()))
+          if(request.url().includes('/rpc/book_appointment'))
             bookings.push(request.postDataJSON());
         });
         await page.getByText('Olá, Cliente!').waitFor({state:'visible',timeout:25000});
