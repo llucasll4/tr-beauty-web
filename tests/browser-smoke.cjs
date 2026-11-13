@@ -435,7 +435,7 @@ async function main() {
         await page.getByRole('button',{name:'Confirmar registro de falta'}).click();
         await page.getByText('Falta registrada. O histórico foi preservado.',{exact:true})
           .waitFor({state:'visible'});
-        await page.getByRole('button',{name:'Corrigir falta'}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Reverter falta registrada'}).waitFor({state:'visible'});
       });
     await testPage(browser,baseUrl,'admin-session',
       {viewport:{width:1280,height:900},testRole:'admin'},
