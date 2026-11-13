@@ -8,6 +8,7 @@ import { emojiForHomeService } from './utils/services';
 import LoyaltyCard from './LoyaltyCard';
 import NextSelfCareCard from './NextSelfCareCard';
 import ClientMaintenanceSuggestion from './ClientMaintenanceSuggestion';
+import ClientCampaignCard from './ClientCampaignCard';
 
 // Componente estável: não é recriado a cada render de MainApp.
 // O estado e os callbacks continuam no controlador; a Home só apresenta dados.
@@ -82,6 +83,16 @@ export default function HomeScreen({
         />
         <ClientMaintenanceSuggestion userId={user.id}
           refreshSignal={myAppointmentsRefresh}
+          onStartBooking={()=>{
+            setSelectedTime(null);
+            setPaymentMethod('cash');
+            setBookingStartStep(1);
+            setBookingSuccess('');
+            setBookingView('new');
+            setCurrentScreen('Booking');
+          }}
+        />
+        <ClientCampaignCard userId={user.id}
           onStartBooking={()=>{
             setSelectedTime(null);
             setPaymentMethod('cash');
