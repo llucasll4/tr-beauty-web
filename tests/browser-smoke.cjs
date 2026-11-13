@@ -512,11 +512,11 @@ async function main() {
         await page.getByText('Meus agendamentos',{exact:true}).waitFor({state:'visible'});
         await page.getByRole('button',{name:'Reagendar Banho de Gel'}).click();
         await page.getByText('Escolha um novo horário',{exact:true}).waitFor({state:'visible'});
-        await page.getByText(/O novo pedido precisará ser aprovado novamente/).waitFor({state:'visible'});
+        await page.getByText(/nova data precisa da confirmação do estúdio/).waitFor({state:'visible'});
         await page.getByRole('button',{name:'Novo horário 12:00'}).waitFor({state:'visible'});
         await page.getByRole('button',{name:'Novo horário 12:00'}).click();
         await page.getByRole('button',{name:'Confirmar reagendamento'}).click();
-        await page.getByText(/Novo horário solicitado para/).waitFor({state:'visible'});
+        await page.getByText(/Novo horário solicitado:/).waitFor({state:'visible'});
         assert.equal(submissions.length,1,'Reschedule RPC must be invoked exactly once');
         assert.equal(submissions[0].p_appointment_id,
           '00000000-0000-4000-8000-000000008881');

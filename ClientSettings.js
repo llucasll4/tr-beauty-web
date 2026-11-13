@@ -156,7 +156,8 @@ export default function ClientSettings({
       else setMessage('Preferência salva.');
       return true;
     }catch(err){
-      setMessage('Não foi possível salvar: '+(err?.message||'erro desconhecido'));
+      setMessage(err?.message?.startsWith('Cadastre um número de WhatsApp válido')
+        ? err.message : 'Não conseguimos salvar esta informação. Tente novamente.');
       return false;
     }finally{setBusy(false);}
   }
@@ -184,7 +185,8 @@ export default function ClientSettings({
       if(error)throw error;
       setNotice(updated);
       setMessage('Preferência de comunicação salva.');
-    }catch(err){setMessage('Não foi possível salvar: '+(err?.message||'erro desconhecido'));}
+    }catch(err){setMessage(err?.message?.startsWith('Cadastre um número de WhatsApp válido')
+        ? err.message : 'Não conseguimos salvar esta informação. Tente novamente.');}
     finally{setBusy(false);}
   }
   async function saveBirthday(){
@@ -202,7 +204,8 @@ export default function ClientSettings({
       if(error)throw error;
       setBirthday({birth_day:day,birth_month:month});
       setDialog(null);
-    }catch(err){setMessage('Não foi possível salvar: '+(err?.message||'erro desconhecido'));}
+    }catch(err){setMessage(err?.message?.startsWith('Cadastre um número de WhatsApp válido')
+        ? err.message : 'Não conseguimos salvar esta informação. Tente novamente.');}
     finally{setBusy(false);}
   }
   async function updatePassword(){
@@ -216,7 +219,7 @@ export default function ClientSettings({
       setNewPassword('');setPasswordConfirm('');
       setDialog(null);
       setMessage('Senha alterada. Mantenha-a em segurança.');
-    }catch(err){setMessage('Não foi possível alterar a senha: '+(err?.message||'erro desconhecido'));}
+    }catch(err){setMessage('Não conseguimos alterar sua senha agora. Tente novamente.');}
     finally{setBusy(false);}
   }
   async function requestDeletion(){
@@ -237,7 +240,7 @@ export default function ClientSettings({
       setDeletionRequest({status:'pending'});
       setDialog(null);
       setMessage('Solicitação registrada. Sua conta permanece ativa até a análise do estúdio.');
-    }catch(err){setMessage('Não foi possível solicitar a exclusão: '+(err?.message||'erro desconhecido'));}
+    }catch(err){setMessage('Não conseguimos registrar sua solicitação agora. Tente novamente ou fale com o estúdio.');}
     finally{setBusy(false);}
   }
   function openSupport(text='Olá! Preciso de ajuda com minha conta no TR Beauty Concept.'){

@@ -104,7 +104,7 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
       setMoreLedger((ledger.data || []).length===PAGE);
       setMoreServices((appointments.data || []).length===PAGE);
     } catch(err) {
-      setError('Não foi possível consultar TR Points: '+(err?.message||'erro desconhecido'));
+      setError('Não conseguimos carregar seus pontos. Toque em atualizar para tentar novamente.');
     } finally {setLoading(false);}
   },[userId,fetchLedger,fetchServices]);
 
@@ -133,7 +133,7 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
         });
         setMoreServices(rows.length===PAGE);
       }
-    } catch(err){setLoadError('Não foi possível carregar mais registros: '+(err?.message||'erro desconhecido'));}
+    } catch(err){setLoadError('Não conseguimos carregar mais movimentações. Tente novamente.');}
     finally{setMoreLoading(false);}
   }
 

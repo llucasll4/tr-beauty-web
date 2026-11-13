@@ -55,7 +55,7 @@ export function useClientNotifications({user,isAdmin,currentScreen}) {
       setUnreadNotifications(number.count || 0);
       setNotificationsError('');
     } catch (e) {
-      setNotificationsError('Não foi possível carregar as notificações: ' + (e?.message || 'erro desconhecido'));
+      setNotificationsError('Não conseguimos carregar seus avisos. Tente novamente.');
     } finally {
       setNotificationsLoading(false);
     }
@@ -103,7 +103,7 @@ export function useClientNotifications({user,isAdmin,currentScreen}) {
       if (error) throw error;
       await loadNotifications();
     } catch (e) {
-      setNotificationsError('Não foi possível atualizar os avisos: ' + (e?.message || 'erro desconhecido'));
+      setNotificationsError('Não conseguimos atualizar seus avisos agora. Tente novamente.');
     } finally { setNotificationActionSaving(false); }
   }
 

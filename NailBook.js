@@ -42,7 +42,7 @@ export default function NailBook({clientId,adminMode=false,onBack=()=>{},onRepea
     if(!adminMode)return;
     let active=true;
     supabase.from('profiles').select('id,full_name').eq('role','client').order('full_name').limit(200)
-      .then(({data,error})=>{if(active){if(error)setError(error.message);else setClients(data||[]);}});
+      .then(({data,error})=>{if(active){if(error)setError('Não conseguimos carregar as clientes agora. Tente novamente.');else setClients(data||[]);}});
     return()=>{active=false;};
   },[adminMode]);
 
@@ -72,7 +72,7 @@ export default function NailBook({clientId,adminMode=false,onBack=()=>{},onRepea
       setServices(catalog.data||[]);
       setAppointments(history.data||[]);
       setImages(pictures);
-    }catch(e){setError('Não foi possível abrir seu Nail Book: '+(e?.message||'erro desconhecido'));}
+    }catch(e){setError('Não conseguimos abrir seu Nail Book. Tente novamente.');}
     finally{setLoading(false);}
   },[target,adminMode]);
   useEffect(()=>{refresh();},[refresh]);
@@ -111,7 +111,7 @@ export default function NailBook({clientId,adminMode=false,onBack=()=>{},onRepea
       await refresh();
     }catch(e){
       if(path)await supabase.storage.from('nail-book').remove([path]).catch(()=>{});
-      setError('Não foi possível salvar: '+(e?.message||'erro desconhecido'));
+      setError('Não conseguimos salvar o registro. Confira as informações e tente novamente.');
     }finally{setBusy(false);}
   }
   async function remove(item){
@@ -123,7 +123,7 @@ export default function NailBook({clientId,adminMode=false,onBack=()=>{},onRepea
       if(error)throw error;
       if(item.photo_path)await supabase.storage.from('nail-book').remove([item.photo_path]);
       setMessage('Registro removido.');await refresh();
-    }catch(e){setError('Não foi possível excluir: '+(e?.message||''));}
+    }catch(e){setError('Não conseguimos remover o registro agora. Tente novamente.');}
     finally{setBusy(false);}
   }
   const available=clients.filter(x=>(x.full_name||'').toLocaleLowerCase('pt-BR')

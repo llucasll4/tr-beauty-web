@@ -99,7 +99,9 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
      if(authError)throw authError;
      say('Dados salvos. Confira o e-mail atual e o novo para confirmar a alteração de endereço.');
    }else say('Perfil atualizado com sucesso.');
- }catch(e){say('Não foi possível salvar: '+e.message,true);}finally{setBusy(false);}}
+ }catch(e){say(/^Informe um celular válido/.test(e?.message||'') ? e.message :
+      'Não foi possível concluir todas as alterações. Confira seus dados e tente novamente.',true);
+    }finally{setBusy(false);}}
 
  function chooseAvatar(event){
    const file=event?.target?.files?.[0];
@@ -163,7 +165,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
      setFileKey(v=>v+1);say('Foto de perfil atualizada!');
    }catch(e){
      setOptimisticAvatar(prior);
-     setEditorError('Erro ao salvar foto: '+(e?.message||'erro desconhecido'));
+     setEditorError('Não conseguimos salvar sua foto. Tente novamente com outra imagem.');
    }finally{setBusy(false);}
  }
  if(loading)return <View style={s.center}><ActivityIndicator color={C.mocha}/></View>;
