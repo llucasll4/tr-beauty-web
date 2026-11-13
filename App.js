@@ -209,7 +209,7 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
         if (error) throw error;
         setSlots(data || []);
       })
-      .catch(err => { if (!cancelled) setBookingError('Não foi possível consultar os horários: ' + err.message); })
+      .catch(err => { if (!cancelled) setBookingError('Não conseguimos consultar os horários agora. Escolha outra data ou tente novamente.'); })
       .finally(() => { if (!cancelled) setSlotsLoading(false); });
     return () => { cancelled = true; };
   }, [user?.id, selectedServiceId, selectedDate, bookingSuccess, myAppointmentsRefresh]);
@@ -242,7 +242,9 @@ function MainApp({ user, isAdmin, onLogout, onRequestAuth, initialScreen = 'Home
       if (isAdmin) await loadAppointments();
       return true;
     } catch (err) {
-      setBookingError('Não foi possível reservar: ' + err.message);
+      setBookingError(err.code === '23P01' || /horário (indisponível|acabou de ser reservado)/i.test(err.message || '')
+        ? 'Esse horário acabou de ficar indisponível. Escolha outro para continuar.'
+        : 'Não conseguimos confirmar o envio. Confira suas reservas antes de tentar novamente.');
       // Outro atendimento pode ter preenchido a lacuna desde a seleção.
       // Reconsulta a disponibilidade sem apagar a mensagem mostrada à cliente.
       if (err.code === '23P01' ||

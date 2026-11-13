@@ -104,7 +104,7 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
       setMoreLedger((ledger.data || []).length===PAGE);
       setMoreServices((appointments.data || []).length===PAGE);
     } catch(err) {
-      setError('Não foi possível consultar TR Points: '+(err?.message||'erro desconhecido'));
+      setError('Não conseguimos carregar seus pontos. Toque em atualizar para tentar novamente.');
     } finally {setLoading(false);}
   },[userId,fetchLedger,fetchServices]);
 
@@ -133,7 +133,7 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
         });
         setMoreServices(rows.length===PAGE);
       }
-    } catch(err){setLoadError('Não foi possível carregar mais registros: '+(err?.message||'erro desconhecido'));}
+    } catch(err){setLoadError('Não conseguimos carregar mais movimentações. Tente novamente.');}
     finally{setMoreLoading(false);}
   }
 
@@ -148,7 +148,7 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
         <Ionicons name="arrow-back-outline" size={23} color={C.ink}/>
       </TouchableOpacity>
       <View style={{flex:1}}>
-        <Text style={s.headTitle}>Meu TR Points</Text>
+        <Text style={s.headTitle}>Meus TR Points</Text>
         <Text style={s.headSubtitle}>Saldo, extrato e histórico de serviços</Text>
       </View>
       <TouchableOpacity accessibilityRole="button" accessibilityLabel="Atualizar TR Points"
@@ -302,16 +302,15 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
           </View>
           <Text style={s.infoText}>
             {overview?.enabled
-              ? 'A pontuação é calculada após o estúdio marcar o atendimento como concluído. Taxa atual: '+
-                digits(overview.points_per_real)+' ponto(s) por R$ 1,00 no programa.'
+              ? 'Os pontos são creditados após a conclusão do atendimento. Atualmente, você ganha '+
+                digits(overview.points_per_real)+' '+(Number(overview.points_per_real)===1?'ponto':'pontos')+' a cada R$ 1,00.'
               : 'O programa de pontos está pausado. Seu histórico continua disponível.'}
           </Text>
           <Text style={s.infoText}>
-            O extrato mostra o valor registrado de cada movimentação. Resgates, estornos e ajustes
-            são apresentados conforme seus lançamentos. A taxa atual pode ser diferente da
-            utilizada em atendimentos anteriores.
+            No extrato, você encontra os pontos ganhos e utilizados, além de possíveis ajustes.
+            A pontuação pode variar conforme as regras válidas na data de cada atendimento.
           </Text>
-          <Text style={s.infoText}>Benefícios, novas regras e informações futuras do programa poderão ser apresentados aqui.</Text>
+          <Text style={s.infoText}>Consulte o Clube VIP para conhecer os benefícios disponíveis.</Text>
         </View>
       </>}
     </ScrollView>

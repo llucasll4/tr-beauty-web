@@ -38,6 +38,24 @@ const redirect = () => {
   return undefined;
 };
 
+
+function friendlyAuthError(error) {
+  const message=String(error?.message||'');
+  if (/invalid login credentials|invalid credentials|invalid email or password/i.test(message))
+    return 'E-mail ou senha incorretos. Confira os dados e tente novamente.';
+  if (/email not confirmed/i.test(message))
+    return 'Confirme seu e-mail para entrar. Confira a caixa de entrada.';
+  if (/already registered|already been registered|user already exists/i.test(message))
+    return 'Este e-mail já está cadastrado. Entre na conta ou recupere sua senha.';
+  if (/rate limit|too many requests|security purposes|over_email_send_rate_limit/i.test(message))
+    return 'Muitas tentativas seguidas. Tente novamente daqui a alguns minutos.';
+  if (/network|failed to fetch|fetch failed|network request failed/i.test(message))
+    return 'Não foi possível conectar. Confira sua internet e tente novamente.';
+  if (/^(Informe|Digite|Use |A senha|Código|Ocorreu|Seu |Sua |Se o)/i.test(message))
+    return message;
+  return 'Não foi possível continuar agora. Tente novamente.';
+}
+
 export default function AuthScreen({
   recovery = false,
   onRecoveryDone = () => {},
@@ -86,8 +104,7 @@ export default function AuthScreen({
       await fn();
     } catch (error) {
       notify(
-        error?.message ||
-          'Ocorreu um erro. Tente novamente.',
+        friendlyAuthError(error),
         true
       );
     } finally {
@@ -150,7 +167,7 @@ export default function AuthScreen({
           setConfirmationCode('');
           setResendAfter(Date.now()+60000);
           setMode('verifyEmail');
-          notify('Cadastro recebido! Digite o código enviado para ' + normalizedEmail + '.');
+          notify('Enviamos um código de confirmação para ' + normalizedEmail + '.');
         } else {
           notify('Conta criada com sucesso!');
         }
@@ -317,14 +334,14 @@ export default function AuthScreen({
         {/* SUBTÍTULO */}
         <Text style={s.subtitle}>
           {mode === 'signup'
-            ? 'Crie sua conta e agende seus cuidados'
+            ? 'Crie sua conta para escolher seu próximo horário'
             : mode === 'reset'
             ? 'Recuperar acesso'
             : mode === 'verifyEmail'
             ? 'Confirme sua conta com o código recebido'
             : mode === 'newPassword'
             ? 'Escolha uma nova senha'
-            : 'Bem-vinda ao seu espaço de beleza'}
+            : 'Entre para agendar e acompanhar seus horários'}
         </Text>
 
         {mode === 'signup' && (
@@ -370,7 +387,7 @@ export default function AuthScreen({
                   accessibilityLabel="Número de celular obrigatório com DDD"
                 />
                 <Text style={s.phoneHint}>
-                  Obrigatório para criar sua conta. Não ativa o envio de WhatsApp automaticamente.
+                  Usaremos seu celular para contato sobre seus horários. Promoções só com sua autorização.
                 </Text>
               </>
             )}
@@ -512,7 +529,7 @@ export default function AuthScreen({
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Consultar o aviso de privacidade"
               onPress={()=>setPrivacyVisible(true)} style={{paddingVertical:13,alignItems:'center'}}>
               <Text style={{color:C.mocha,fontSize:12,textAlign:'center',lineHeight:18}}>
-                Saiba como seus dados serão utilizados: Aviso de Privacidade
+                Saiba como cuidamos dos seus dados · Aviso de Privacidade
               </Text>
             </TouchableOpacity>
             <Btn

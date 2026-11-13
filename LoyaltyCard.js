@@ -37,7 +37,7 @@ export default function LoyaltyCard({ userId, refreshSignal = 0, onOpenDetails }
       setError('');
     } catch (e) {
       if (requestId === requestRef.current) {
-        setError('Não foi possível atualizar os TR Points: ' + (e?.message || 'erro desconhecido'));
+        setError('Não conseguimos atualizar seus pontos agora. Tente novamente.');
       }
     } finally {
       if (requestId === requestRef.current) setLoading(false);
@@ -118,7 +118,7 @@ export default function LoyaltyCard({ userId, refreshSignal = 0, onOpenDetails }
           {summary && !summary.enabled && <Text style={s.helper}>O programa de fidelidade está pausado.</Text>}
           {!!error && <Text style={s.error}>{error}</Text>}
           {history.length > 0 && <View style={s.history}>
-            <Text style={s.historyTitle}>Últimos movimentos</Text>
+            <Text style={s.historyTitle}>Movimentações recentes</Text>
             {history.map((item, i) => <View key={item.created_at + '-' + i} style={s.historyRow}>
               <Text style={s.historyDate}>{fmtDate(item.created_at)}</Text>
               <Text style={[s.historyPoints, Number(item.points) < 0 && { color: '#A63D40' }]}>

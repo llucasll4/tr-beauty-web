@@ -52,9 +52,8 @@ export default function ClientCampaignCard({userId,onStartBooking}){
     <Text style={s.title}>{campaign.title}</Text>
     <Text style={s.message}>{campaign.body}</Text>
     <Text style={s.note}>
-      Você está vendo esta novidade porque autorizou promoções no aplicativo.
-      Pode desativá-las a qualquer momento em Perfil → Ajustes.
-      Nenhuma mensagem é enviada por e-mail ou WhatsApp.
+      Você escolheu receber novidades por aqui. Para mudar essa preferência,
+      acesse Perfil → Ajustes.
     </Text>
     {campaign.cta==='book'&&<TouchableOpacity accessibilityRole="button"
       accessibilityLabel="Ver serviços disponíveis da campanha"

@@ -25,7 +25,7 @@ export default function PrivacyNotice({visible=false,onClose=()=>{}}){
           </TouchableOpacity>
         </View>
         <ScrollView style={s.scroll} contentContainerStyle={s.content}>
-          <Text style={s.update}>TR BEAUTY CONCEPT · Atualizado em 11/11/2026</Text>
+          <Text style={s.update}>TR BEAUTY CONCEPT · Atualizado em 13/11/2026</Text>
           <Text style={s.intro}>
             Este aviso explica, de forma resumida, como os dados informados no
             TR Beauty Concept são usados para operar o site e os atendimentos.
@@ -81,10 +81,8 @@ export default function PrivacyNotice({visible=false,onClose=()=>{}}){
             WhatsApp do estúdio: (11) 94690-1167.
           </Section>
           <Text style={s.note}>
-            Este aviso descreve os recursos técnicos identificados no site.
-            A administração deve revisar periodicamente as práticas de
-            retenção, fornecedores e obrigações legais antes de mudanças
-            relevantes no tratamento de dados.
+            Se tiver dúvidas sobre seus dados ou quiser fazer uma solicitação,
+            fale com o estúdio pelo WhatsApp. Estamos à disposição para orientar você.
           </Text>
           <TouchableOpacity accessibilityRole="button" style={s.contact}
             onPress={()=>Linking.openURL('https://wa.me/5511946901167?text='+

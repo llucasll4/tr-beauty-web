@@ -48,7 +48,7 @@ export default function ClientReschedule({appointment,onClose,onSuccess}){
         if(rpcError)throw rpcError;
         if(alive)setSlots(Array.isArray(data)?data:Array.isArray(result)?result:[]);
       }catch(e){
-        if(alive)setSlotError('Não foi possível consultar horários: '+(e?.message||'erro desconhecido'));
+        if(alive)setSlotError('Não conseguimos consultar os horários agora. Escolha outra data ou tente novamente.');
       }finally{if(alive)setLoading(false);}
     })();
     return()=>{alive=false;};
@@ -65,8 +65,9 @@ export default function ClientReschedule({appointment,onClose,onSuccess}){
       if(!nextId)throw new Error('O servidor não confirmou a nova reserva. Confira seus agendamentos.');
       await onSuccess(chosen);
     }catch(e){
-      setError('O reagendamento não foi concluído: '+(e?.message||'erro desconhecido')+
-        '. A reserva anterior permanece válida se a operação falhou.');
+      setError(/TR Points|pontos|saldo/i.test(e?.message||'')
+        ? 'Não foi possível manter as condições dos seus TR Points. Fale com o estúdio para reagendar.'
+        : 'Não conseguimos mudar o horário. Sua reserva original foi mantida. Tente outra data ou fale com o estúdio.');
       // O horário pode ter sido reservado por outra cliente enquanto era exibido.
       setChosen(null);
       setReload(v=>v+1);
@@ -84,9 +85,8 @@ export default function ClientReschedule({appointment,onClose,onSuccess}){
         <Ionicons name="close-outline" size={21} color={C.mocha}/>
       </TouchableOpacity>
     </View>
-    <Text style={s.note}>O serviço e o valor originalmente combinado serão preservados.
-      Você pode reagendar com pelo menos 24 horas de antecedência.
-      O novo pedido precisará ser aprovado novamente pelo estúdio.</Text>
+    <Text style={s.note}>Você pode pedir outro horário com pelo menos 24 horas de antecedência.
+      O serviço e o valor permanecem os mesmos, e a nova data precisa da confirmação do estúdio.</Text>
     {!!firstMonth&&<View style={s.calendar}>
       <View style={s.monthHead}>
         <TouchableOpacity style={s.arrow} accessibilityRole="button"
@@ -142,9 +142,8 @@ export default function ClientReschedule({appointment,onClose,onSuccess}){
     </View>
     {chosen&&<View style={s.summary}>
       <Text style={s.summaryText}>Novo horário: {readableDate(chosen)}</Text>
-      <Text style={s.note}>Ao confirmar, a reserva anterior será cancelada
-        somente se a nova for criada. O novo pedido ficará aguardando aprovação.
-        Se usou TR Points, o estorno e o novo resgate ocorrerão juntos.</Text>
+      <Text style={s.note}>Seu horário atual só será substituído se o novo estiver disponível.
+        Se você usou TR Points, a pontuação será preservada.</Text>
     </View>}
     {!!error&&<Text style={s.error}>{error}</Text>}
     <View style={s.actions}>

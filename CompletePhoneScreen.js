@@ -34,11 +34,11 @@ export default function CompletePhoneScreen({ user, onSaved, onLogout }) {
         .select('id,phone').single();
       if (saveError) throw saveError;
       if (normalizeBrazilMobile(data?.phone) !== mobile) {
-        throw new Error('O telefone não foi confirmado pelo servidor.');
+        throw new Error('Não conseguimos confirmar seu celular. Tente novamente.');
       }
       onSaved();
     } catch (err) {
-      setError('Não foi possível salvar seu celular: ' + (err?.message || 'tente novamente.'));
+      setError('Não conseguimos salvar seu celular agora. Tente novamente.');
     } finally {
       setBusy(false);
     }
@@ -52,8 +52,8 @@ export default function CompletePhoneScreen({ user, onSaved, onLogout }) {
       <Text style={s.brand}>TR Beauty Concept</Text>
       <Text style={s.title}>Vamos completar seu cadastro</Text>
       <Text style={s.description}>
-        Para agendar seus serviços de unhas, precisamos de um número de celular válido
-        com DDD. Seus agendamentos, pontos e dados anteriores continuam preservados.
+        Inclua seu celular com DDD para completar o cadastro e agendar seus horários.
+        Seus dados e pontos já registrados continuam disponíveis.
       </Text>
       <View style={s.card}>
         <Text style={s.label}>Celular com DDD *</Text>
@@ -69,8 +69,8 @@ export default function CompletePhoneScreen({ user, onSaved, onLogout }) {
           accessibilityLabel="Celular obrigatório com DDD"
         />
         <Text style={s.helper}>
-          O número será salvo no seu perfil. Informá-lo não autoriza mensagens
-          promocionais nem ativa o WhatsApp automaticamente.
+          Usaremos seu celular para contato sobre seus atendimentos.
+          Mensagens promocionais dependem de sua autorização.
         </Text>
         {!!error && <View style={s.errorBox}>
           <Ionicons name="alert-circle-outline" size={18} color={C.red}/>

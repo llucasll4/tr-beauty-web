@@ -43,7 +43,7 @@ export default function PortfolioScreen({ adminMode = false, services = [] }) {
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false })
       .limit(250);
-    if (queryError) setError('Erro ao carregar o portfólio: ' + queryError.message);
+    if (queryError) setError('Não conseguimos carregar a galeria. Tente novamente.');
     else setPhotos(data || []);
     setLoading(false);
   }, []);
