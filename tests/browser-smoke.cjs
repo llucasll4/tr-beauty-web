@@ -32,12 +32,12 @@ const testServices = [{
   id: '00000000-0000-4000-8000-000000000101',
   name: 'Banho de Gel', description: 'Serviço de exemplo para o teste',
   category: 'unhas', active: true, price: 120, duration_minutes: 90,
-  redeem_points: 300,
+  redeem_points: 300, maintenance_interval_days:21,
 }, {
   id: '00000000-0000-4000-8000-000000000102',
   name: 'Alongamento', description: 'Outro exemplo do teste',
   category: 'unhas', active: true, price: 160, duration_minutes: 120,
-  redeem_points: 400,
+  redeem_points: 400, maintenance_interval_days:null,
 }];
 
 function localServer() {
@@ -189,15 +189,40 @@ async function mockSupabase(page, role) {
         case 'portfolio_photos':
         case 'notifications':
         case 'admin_notifications':
+          data = [];
+          break;
         case 'appointments':
-          data = role === 'reschedule' ? [{
-            id:'00000000-0000-4000-8000-000000008881',
-            client_id:'00000000-0000-4000-8000-000000000001',
-            starts_at:new Date(Date.now()+14*86400000).toISOString(),
-            ends_at:new Date(Date.now()+14*86400000+90*60000).toISOString(),
-            status:'confirmed',price_at_booking:120,points_redeemed:null,
-            services:{name:'Banho de Gel'}
-          }] : [];
+          if((role==='maintenance'||role==='maintenance-booked')
+              && (url.searchParams.get('status')||'').includes('completed')){
+            data=[{
+              id:'00000000-0000-4000-8000-000000008894',
+              service_id:'00000000-0000-4000-8000-000000000101',
+              client_id:'00000000-0000-4000-8000-000000000001',
+              ends_at:new Date(Date.now()-19*86400000).toISOString(),
+              status:'completed',
+              services:{id:'00000000-0000-4000-8000-000000000101',
+                name:'Banho de Gel',active:true,maintenance_interval_days:21},
+            }];
+          }else if(role==='maintenance-booked' &&
+              (url.searchParams.get('status')||'').includes('pending')){
+            data=[{
+              id:'00000000-0000-4000-8000-000000008895',
+              service_id:'00000000-0000-4000-8000-000000000101',
+              client_id:'00000000-0000-4000-8000-000000000001',
+              starts_at:new Date(Date.now()+7*86400000).toISOString(),
+              status:'confirmed',
+              services:{name:'Banho de Gel'},
+            }];
+          }else{
+            data = role === 'reschedule' ? [{
+              id:'00000000-0000-4000-8000-000000008881',
+              client_id:'00000000-0000-4000-8000-000000000001',
+              starts_at:new Date(Date.now()+14*86400000).toISOString(),
+              ends_at:new Date(Date.now()+14*86400000+90*60000).toISOString(),
+              status:'confirmed',price_at_booking:120,points_redeemed:null,
+              services:{name:'Banho de Gel'}
+            }] : [];
+          }
           break;
         case 'appointment_no_shows':
           if (request.method()==='POST') noShowRecorded=true;
@@ -335,6 +360,32 @@ async function main() {
             resourceCount:performance.getEntriesByType('resource').length};
         });
         console.log('MOBILE_DIAGNOSTIC 320px '+JSON.stringify(perf));
+      });
+    await testPage(browser,baseUrl,'client-maintenance-suggestion',
+      {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'maintenance'},
+      async page => {
+        const bookings=[];
+        page.on('request',request=>{
+          if(request.url().includes('/rpc/book_appointment'))
+            bookings.push(request.postDataJSON());
+        });
+        await page.getByText('Olá, Cliente!').waitFor({state:'visible',timeout:25000});
+        await page.getByText('Que tal cuidar das unhas novamente?',{exact:true})
+          .waitFor({state:'visible'});
+        await page.getByText('Sugestão de manutenção do estúdio',{exact:true})
+          .waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Escolher serviço e horário de manutenção'}).click();
+        await page.getByPlaceholder('Buscar serviço de unhas...').waitFor({state:'visible'});
+        assert.equal(bookings.length,0,'Suggestion must never auto-book an appointment');
+      });
+    await testPage(browser,baseUrl,'client-maintenance-already-booked',
+      {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'maintenance-booked'},
+      async page => {
+        await page.getByText('Olá, Cliente!').waitFor({state:'visible',timeout:25000});
+        await page.getByText('Seu momento de autocuidado',{exact:true})
+          .waitFor({state:'visible'});
+        assert.equal(await page.getByText('Que tal cuidar das unhas novamente?',{exact:true}).count(),
+          0,'No maintenance suggestion when same service already booked');
       });
     await testPage(browser,baseUrl,'client-session',
       {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'client'},

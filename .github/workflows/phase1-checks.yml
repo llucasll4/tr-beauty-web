@@ -108,3 +108,5 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f tests/db/phase4-operation-setup.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261113124654_phase4_operational_kpis.sql
           psql -v ON_ERROR_STOP=1 -f tests/db/phase4-operation-regression.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261113130829_phase4_maintenance_intervals.sql
+          psql -v ON_ERROR_STOP=1 -f tests/db/phase4-maintenance-regression.sql
