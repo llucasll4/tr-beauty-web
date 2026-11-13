@@ -91,6 +91,9 @@ function fakeSession(role) {
 
 async function mockSupabase(page, role) {
   let noShowRecorded = false;
+  let marketingOptIn = role === 'campaign-consented';
+  let campaignCreated = false;
+  let campaignStatus = 'draft';
   await page.route('https://example.supabase.co/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -112,6 +115,11 @@ async function mockSupabase(page, role) {
           }]
         : entity === 'reschedule_appointment'
           ? '00000000-0000-4000-8000-000000009998'
+        : entity === 'p4_marketing_summary' ? {
+            consented:marketingOptIn?1:0,
+            published:campaignStatus==='published'?1:0,
+            drafts:campaignCreated&&campaignStatus==='draft'?1:0,
+          }
         : entity === 'p4_operational_metrics' ? {
             year:2026,month:11,timezone:'America/Sao_Paulo',
             minutes:{capacity:10200,booked:4000,blocked:120},
@@ -228,8 +236,47 @@ async function mockSupabase(page, role) {
           if (request.method()==='POST') noShowRecorded=true;
           data=[];
           break;
-        case 'points_ledger':
+        case 'marketing_campaigns': {
+          const saved={id:'00000000-0000-4000-8000-000000003333',
+            title:'Novidade especial TR Beauty',
+            body:'Uma novidade delicada está esperando por você no nosso estúdio.',
+            cta:'book',status:campaignStatus,duration_days:30,
+            created_at:'2026-11-13T12:00:00Z',
+            published_at:campaignStatus==='draft'?null:'2026-11-13T13:00:00Z',
+            expires_at:'2026-12-13T13:00:00Z',
+          };
+          if(request.method()==='POST'){
+            campaignCreated=true; data=[];
+          }else if(request.method()==='PATCH'){
+            campaignStatus=request.postDataJSON()?.status||campaignStatus;
+            data=[{id:saved.id,status:campaignStatus}];
+          }else if(role==='admin'){
+            data=campaignCreated?[{...saved,status:campaignStatus}]:[];
+          }else if(marketingOptIn&&role==='campaign-consented'){
+            data=[{...saved,status:'published'}];
+          }else{
+            data=[];
+          }
+          if(accept.includes('vnd.pgrst.object')&&Array.isArray(data)){
+            data=data[0]||null;
+          }
+          break;
+        }
         case 'client_care_preferences':
+          if(request.method()==='POST'){
+            const fields=request.postDataJSON()||{};
+            if(Object.prototype.hasOwnProperty.call(fields,'marketing_opt_in'))
+              marketingOptIn=!!fields.marketing_opt_in;
+            data=[];
+          }else{
+            const row={marketing_opt_in:marketingOptIn,
+              marketing_consented_at:marketingOptIn?'2026-11-13T12:00:00Z':null,
+              app_alerts_enabled:true,service_style:'sem_preferencia',
+              favorite_drink:'sem_preferencia'};
+            data=accept.includes('vnd.pgrst.object')?row:[row];
+          }
+          break;
+        case 'points_ledger':
         default: data = [];
       }
     }
@@ -386,6 +433,60 @@ async function main() {
           .waitFor({state:'visible'});
         assert.equal(await page.getByText('Que tal cuidar das unhas novamente?',{exact:true}).count(),
           0,'No maintenance suggestion when same service already booked');
+      });
+    await testPage(browser,baseUrl,'client-consented-campaign',
+      {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'campaign-consented'},
+      async page => {
+        const attempted=[];
+        page.on('request',request=>{
+          if(request.url().includes('/rpc/book_appointment'))
+            attempted.push(request.url());
+        });
+        await page.getByText('Olá, Cliente!').waitFor({state:'visible',timeout:25000});
+        await page.getByText('Novidades do estúdio',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Novidade especial TR Beauty',{exact:true}).waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Ver serviços disponíveis da campanha'}).click();
+        await page.getByPlaceholder('Buscar serviço de unhas...').waitFor({state:'visible'});
+        assert.equal(attempted.length,0,'Campaign must never create bookings');
+        // Explicit opt-out removes campaign visibility when returning to Home.
+        await page.getByRole('button',{name:'Perfil',exact:true}).last().click();
+        const toggle=page.getByLabel('Novidades e promoções no aplicativo');
+        await toggle.waitFor({state:'visible'});
+        await toggle.click();
+        await page.getByRole('button',{name:'Início',exact:true}).last().click();
+        await page.getByText('Olá, Cliente!').waitFor({state:'visible'});
+        assert.equal(await page.getByText('Novidade especial TR Beauty',{exact:true}).count(),
+          0,'Opt-out must suppress marketing campaign in Home');
+      });
+    await testPage(browser,baseUrl,'client-not-consented-campaign',
+      {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'client'},
+      async page => {
+        await page.getByText('Olá, Cliente!').waitFor({state:'visible',timeout:25000});
+        assert.equal(await page.getByText('Novidades do estúdio',{exact:true}).count(),0,
+          'No marketing when client has not opted in');
+      });
+    await testPage(browser,baseUrl,'admin-campaigns',
+      {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'admin'},
+      async page => {
+        await page.getByText('Painel Admin 👩‍💻').waitFor({state:'visible',timeout:25000});
+        await page.getByRole('button',{name:'Configurações da administração'}).click();
+        await page.getByRole('button',{name:'Campanhas',exact:true}).click();
+        await page.getByText('Campanhas de relacionamento',{exact:true}).waitFor({state:'visible'});
+        await page.getByLabel('Título da campanha').fill('Novidade especial TR Beauty');
+        await page.getByLabel('Texto da campanha')
+          .fill('Uma novidade delicada está esperando por você no nosso estúdio.');
+        await page.getByRole('button',{name:'Salvar campanha como rascunho'}).click();
+        await page.getByText('Rascunho salvo. Nenhuma cliente recebeu uma mensagem.')
+          .waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Publicar campanha Novidade especial TR Beauty'})
+          .click();
+        await page.getByText('Confirmar publicação dentro do aplicativo?',{exact:true})
+          .waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Confirmar publicação da campanha'}).click();
+        await page.getByText('Novidade publicada apenas dentro do aplicativo para quem autorizou.')
+          .waitFor({state:'visible'});
+        await page.getByRole('button',{name:'Arquivar campanha Novidade especial TR Beauty'})
+          .waitFor({state:'visible'});
       });
     await testPage(browser,baseUrl,'client-session',
       {viewport:{width:390,height:844},isMobile:true,hasTouch:true,testRole:'client'},
