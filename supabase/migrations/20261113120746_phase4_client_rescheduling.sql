@@ -194,7 +194,7 @@ begin
     end if;
   end if;
 end;
-$function$
+$function$;
 
 revoke all on function public.available_reschedule_slots(uuid,date)
   from public,anon,authenticated;
