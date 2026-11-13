@@ -100,7 +100,7 @@ create trigger p4_guard_no_show_void
 -- Do not complete/cancel a booking already registered as absent without
 -- first voiding the incorrect absence; prevents contradictory metrics.
 create or replace function public.p4_guard_no_show_appointment_transition()
-returns trigger language plpgsql security invoker set search_path=''
+returns trigger language plpgsql security definer set search_path=''
 as $guard$
 begin
   if old.status='confirmed'
@@ -162,9 +162,9 @@ begin
   v_end:=v_after::timestamp at time zone 'America/Sao_Paulo';
 
   with working as (
-    select (d.day+bh.opens_at) at time zone 'America/Sao_Paulo' as opening,
-           (d.day+bh.closes_at) at time zone 'America/Sao_Paulo' as closing
-    from pg_catalog.generate_series(v_first,v_after-1,interval '1 day') as d(day)
+    select (d.day::date+bh.opens_at) at time zone 'America/Sao_Paulo' as opening,
+           (d.day::date+bh.closes_at) at time zone 'America/Sao_Paulo' as closing
+    from pg_catalog.generate_series(v_first::timestamp,(v_after-1)::timestamp,interval '1 day') as d(day)
     join public.business_hours bh
       on bh.weekday=extract(dow from d.day)::integer
      and bh.enabled=true and bh.closes_at>bh.opens_at
