@@ -101,5 +101,5 @@ jobs:
           # Phase 4: tests invoke the actual booking and loyalty functions in
           # a disposable DB; no production appointments are touched.
           psql -v ON_ERROR_STOP=1 -f tests/db/phase4-reschedule-setup.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261113120746_phase4_client_rescheduling.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261113122237_phase4_client_rescheduling.sql
           psql -v ON_ERROR_STOP=1 -f tests/db/phase4-reschedule-regression.sql

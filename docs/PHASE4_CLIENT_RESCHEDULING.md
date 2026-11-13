@@ -61,9 +61,9 @@ serviços de unhas, horários configurados no banco e TR Points.
 - Testes Playwright Chromium: abrir Reservas, tocar em Reagendar, consultar
   horário, confirmar uma vez com Supabase inteiramente fictício e verificar
   o retorno visual. Nenhuma reserva real é criada no CI.
-- **Esta branch não altera o banco de produção.** Aplicar a migration
-  `supabase/migrations/20261113120746_phase4_client_rescheduling.sql`
-  somente após CI, revisão do SQL e verificação de rollback/backup.
+- **A migration já foi aplicada ao Supabase oficial** e as novas funções/RLS foram verificadas sem alterar reservas existentes. Usar a migration
+  `supabase/migrations/20261113122237_phase4_client_rescheduling.sql`
+  versionada para reproduzir o schema em novos ambientes; não reaplicá-la à produção.
 - Por segurança, publicar o frontend **após** a migração e verificação da
   política RLS. Uma prévia com backend ainda não atualizado pode exibir erro
   de RPC ausente; isso não é confirmação de horário.
