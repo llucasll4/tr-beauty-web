@@ -131,7 +131,7 @@ export default function AdminOperationalMetrics({year,month,userId}){
     </Text>}
     {!!error&&<Text style={s.error}>{error}</Text>}
     {!!notice&&<Text style={s.good}>{notice}</Text>}
-    {!loading&&!error&&!unavailable&&data&&<>
+    {!loading&&!unavailable&&data&&<>
       <View style={s.stats}>
         <Stat title="Ocupação da agenda" value={labelPercent(occupied)}
           detail="Tempo reservado ou realizado, incluindo 15 min de intervalo, sobre expediente sem bloqueios."/>
