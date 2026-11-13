@@ -321,13 +321,10 @@ export default function ClientSettings({
           detail="Exibir contador no Início; não ativa push no celular."
           value={care.app_alerts_enabled} disabled={busy||loading}
           onChange={enabled=>saveCare({app_alerts_enabled:enabled})}/>
-        <ToggleRow icon="star-outline" label="Novidades e promoções"
-          detail="Registra sua preferência; envios promocionais não estão ativos."
+        <ToggleRow icon="star-outline" label="Novidades e promoções no aplicativo"
+          detail="Autorizo ver campanhas na Home. Não autoriza e-mails ou WhatsApp promocionais. Posso desativar quando quiser."
           value={care.marketing_opt_in} disabled={busy||loading}
-          onChange={enabled=>saveCare({
-            marketing_opt_in:enabled,
-            marketing_consented_at:enabled?new Date().toISOString():null,
-          })}/>
+          onChange={enabled=>saveCare({marketing_opt_in:enabled})}/>
         <TouchableOpacity accessibilityRole="button" onPress={onOpenNotifications}
           style={s.notificationsLink}>
           <Text style={s.notificationsLinkText}>Abrir central de notificações</Text>
