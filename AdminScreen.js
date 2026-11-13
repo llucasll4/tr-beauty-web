@@ -152,6 +152,7 @@ export default function AdminScreen({
             </Text>
             <Text style={[styles.subtitle, { marginTop: 6 }]}>
               {service.active ? 'Ativo' : 'Desativado'}
+              {' · Manutenção: ' + (service.maintenance_interval_days ? service.maintenance_interval_days+' dias' : 'sem sugestão')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 18, marginTop: 14 }}>
               <TouchableOpacity onPress={() => beginEditService(service)}>
@@ -203,6 +204,7 @@ export default function AdminScreen({
                   ['price', 'Preço (R$) *', 'Ex.: 120,00'],
                   ['duration_minutes', 'Duração (minutos) *', 'Ex.: 90'],
                   ['redeem_points', 'Pontos para resgate *', 'Ex.: 300'],
+                  ['maintenance_interval_days', 'Sugerir manutenção após (dias, opcional)', 'Ex.: 21. Deixe vazio para desativar'], 
                 ].map(([field, label, hint]) => (
                   <View key={field} style={styles.serviceModalField}>
                     <Text style={styles.serviceModalFieldLabel}>{label}</Text>
@@ -211,7 +213,7 @@ export default function AdminScreen({
                       value={serviceForm[field]}
                       onChangeText={(value) => setServiceForm(prev => ({...prev, [field]: value}))}
                       keyboardType={field === 'price' ? 'decimal-pad' :
-                        ['duration_minutes', 'redeem_points'].includes(field) ? 'number-pad' : 'default'}
+                        ['duration_minutes', 'redeem_points', 'maintenance_interval_days'].includes(field) ? 'number-pad' : 'default'}
                       placeholder={hint} placeholderTextColor={colors.muted}
                       accessibilityLabel={label}
                       multiline={field === 'description'}
@@ -220,6 +222,7 @@ export default function AdminScreen({
                   </View>
                 ))}
 
+                <Text style={[styles.serviceModalSubtitle, { marginBottom: 13 }]}>Intervalo definido pelo estúdio para sugerir retorno na Home após um atendimento concluído (14 a 90 dias). Não gera agendamentos ou mensagens automaticamente.</Text>
                 <TouchableOpacity onPress={() => setServiceForm(prev => ({...prev, active: !prev.active}))}
                   style={styles.serviceModalActive} accessibilityRole="checkbox"
                   accessibilityState={{checked:serviceForm.active}}>
