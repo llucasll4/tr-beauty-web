@@ -36,12 +36,17 @@ set role authenticated;
 select pg_catalog.set_config('request.jwt.claim.sub',
  '00000000-0000-4000-8000-000000000001',false);
 do $test$
-declare changed integer;
+declare changed integer:=0; denied boolean:=false;
 begin
- update public.services set maintenance_interval_days=30
-   where id='00000000-0000-4000-8000-000000000060';
- get diagnostics changed = row_count;
- if changed<>0 then raise exception 'Client changed Admin maintenance configuration'; end if;
+ begin
+  update public.services set maintenance_interval_days=30
+    where id='00000000-0000-4000-8000-000000000060';
+  get diagnostics changed = row_count;
+ exception when insufficient_privilege then denied:=true;
+ end;
+ if not denied and changed<>0 then
+  raise exception 'Client changed Admin maintenance configuration';
+ end if;
 end;
 $test$;
 reset role;
