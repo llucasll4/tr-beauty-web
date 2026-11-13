@@ -307,11 +307,10 @@ export default function TRPointsDashboard({userId,onBack,onRedeem=()=>{},initial
               : 'O programa de pontos está pausado. Seu histórico continua disponível.'}
           </Text>
           <Text style={s.infoText}>
-            O extrato mostra o valor registrado de cada movimentação. Resgates, estornos e ajustes
-            são apresentados conforme seus lançamentos. A taxa atual pode ser diferente da
-            utilizada em atendimentos anteriores.
+            No extrato, você encontra os pontos ganhos e utilizados, além de possíveis ajustes.
+            A pontuação pode variar conforme as regras válidas na data de cada atendimento.
           </Text>
-          <Text style={s.infoText}>Benefícios, novas regras e informações futuras do programa poderão ser apresentados aqui.</Text>
+          <Text style={s.infoText}>Consulte o Clube VIP para conhecer os benefícios disponíveis.</Text>
         </View>
       </>}
     </ScrollView>

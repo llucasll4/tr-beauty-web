@@ -62,7 +62,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
  useEffect(()=>{let active=true;(async()=>{
    const {data,error:e}=await supabase.from('profiles').select('full_name,phone,avatar_path').eq('id',user.id).single();
    if(!active)return;
-   if(e)say('Erro ao carregar perfil: '+e.message,true);
+   if(e)say('Não conseguimos carregar seu perfil. Tente novamente.',true);
    else{setName(data.full_name||'');setPhone(requirePhone?formatBrazilMobile(data.phone||''):(data.phone||''));setAvatarPath(data.avatar_path||null);}
    setLoading(false);
  })();return()=>{active=false;};},[user.id]);
@@ -193,7 +193,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
 
   {showPoints && <ProfilePointsBanner userId={user.id} onOpenRules={onOpenRules}/>}
 
-  <Text style={s.label}>Nome Completo</Text>
+  <Text style={s.label}>Nome completo</Text>
   <View style={s.inputShell}>
     <Ionicons name="person-outline" size={22} color={C.muted}/>
     <TextInput style={s.fieldInput} value={name} onChangeText={setName}
@@ -220,7 +220,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
       placeholderTextColor={C.muted}/>
   </View>
 
-  <Text style={s.help}>Alterar o e-mail exige confirmação pelo Supabase. O celular é validado pelo formato brasileiro e usado para contato. Mensagens pelo WhatsApp exigem autorização separada.</Text>
+  <Text style={s.help}>Ao trocar seu e-mail, você precisará confirmar o novo endereço. Seu celular é usado para contato sobre os atendimentos; mensagens promocionais dependem de autorização.</Text>
   {!!message&&<Text style={{color:error?'#B42318':'#276749',marginVertical:14}}>{message}</Text>}
   <TouchableOpacity accessibilityRole="button" style={s.button} onPress={saveProfile} disabled={busy}>
     <Text style={s.buttonText}>{busy?'Salvando...':'Salvar alterações'}</Text>
@@ -236,7 +236,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
    <ScrollView contentContainerStyle={s.modalScroll} keyboardShouldPersistTaps="handled">
     <View style={s.modalCard}>
      <Text style={s.modalTitle}>Recortar foto de perfil</Text>
-     <Text style={s.modalSubtitle}>A prévia representa a moldura circular da sua foto.</Text>
+     <Text style={s.modalSubtitle}>Ajuste o enquadramento para deixar sua foto como preferir.</Text>
      <View style={s.previewOuter}>
       {editorLoading?<ActivityIndicator color={C.mocha}/>:
        <View style={s.previewCircle}>
@@ -271,7 +271,7 @@ export default function ProfileScreen({user,onLogout,onAvatarChange=()=>{},onNam
         <Text style={{color:'#fff',fontWeight:'700'}}>Salvar foto</Text>}
       </TouchableOpacity>
      </View>
-     <Text style={s.help}>A versão recortada será convertida para JPG e otimizada automaticamente.</Text>
+     <Text style={s.help}>Confira o enquadramento antes de salvar.</Text>
     </View>
    </ScrollView>
   </View>

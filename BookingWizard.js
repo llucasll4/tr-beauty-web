@@ -170,9 +170,9 @@ export default function BookingWizard({
         <View style={s.bigCheck}>
           <Ionicons name="checkmark" size={46} color={C.white}/>
         </View>
-        <Text style={s.successHeading}>Pedido enviado com sucesso!</Text>
+        <Text style={s.successHeading}>Seu pedido foi enviado!</Text>
         <Text style={s.successSubtitle}>
-          Seu agendamento foi registrado. Estamos aguardando a confirmação do estúdio.
+          O estúdio precisa confirmar seu horário. Você pode acompanhar o pedido em Reservas.
         </Text>
         <View style={s.summaryCard}>
           <View style={s.serviceRow}>
@@ -256,7 +256,7 @@ export default function BookingWizard({
           <Ionicons name="chevron-forward" color={C.mocha} size={19}/>
         </TouchableOpacity>)}
         {!user&&<Text style={s.guide}>
-          Você pode conhecer os serviços sem cadastro. Para escolher o horário, entre ou crie sua conta.
+          Você pode conhecer nossos serviços à vontade. Para agendar, entre ou crie sua conta.
         </Text>}
       </>}
 
@@ -323,7 +323,7 @@ export default function BookingWizard({
             </TouchableOpacity>;
           })}
         </View>
-        <Text style={s.guide}>Terça e quinta: atendimento + preparação até 18h. Quarta, sexta e sábado: último início às 20h. Intervalo de 15 min entre atendimentos · Brasília</Text>
+        <Text style={s.guide}>Escolha um dos horários disponíveis. Os horários exibidos seguem o fuso de Brasília.</Text>
       </>}
 
       {step===3&&service&&<>
@@ -347,7 +347,7 @@ export default function BookingWizard({
             onPress={()=>{setPaymentMethod('cash');onClearError();}}
             style={[s.paymentOption,paymentMethod==='cash'&&s.paymentChosen]}>
             <Ionicons name="wallet-outline" size={20} color={C.mocha}/>
-            <Text style={s.paymentLabel}>No atendimento</Text>
+            <Text style={s.paymentLabel}>Pagar no atendimento</Text>
             <Text style={s.paymentSub}>{money(service.price)}</Text>
           </TouchableOpacity>
           <TouchableOpacity accessibilityRole="button"
@@ -376,12 +376,12 @@ export default function BookingWizard({
             <Text style={s.noticeTitle}>Antes de confirmar</Text>
           </View>
           <Text style={s.noticeBody}>
-            Este é um pedido de horário, sujeito à aprovação do estúdio.
-            A confirmação aparecerá em Reservas e será enviada pelos canais habilitados.
+            Seu pedido será enviado ao estúdio para confirmação.
+            Você poderá acompanhar o andamento em Reservas.
           </Text>
           {paymentMethod==='points'&&<Text style={[s.noticeBody,{marginTop:9}]}>
-            Ao enviar, os pontos serão descontados. Se o estúdio cancelar o pedido antes
-            do atendimento, eles serão devolvidos automaticamente.
+            Ao solicitar com TR Points, os pontos são descontados agora.
+            Se o estúdio cancelar antes do atendimento, eles serão devolvidos.
           </Text>}
         </View>
       </>}

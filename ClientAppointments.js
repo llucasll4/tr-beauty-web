@@ -69,7 +69,7 @@ export default function ClientAppointments({ userId, onNewBooking, onRescheduled
       setHasMore((data || []).length === PAGE_SIZE);
       setAsOf(Date.now());
     } catch (err) {
-      setError('Não foi possível carregar seus agendamentos: ' + (err?.message || 'erro desconhecido'));
+      setError('Não conseguimos carregar suas reservas. Toque em atualizar para tentar novamente.');
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ export default function ClientAppointments({ userId, onNewBooking, onRescheduled
       setHasMore(page.length === PAGE_SIZE);
       setAsOf(Date.now());
     } catch (err) {
-      setError('Não foi possível carregar mais agendamentos: ' + (err?.message || 'erro desconhecido'));
+      setError('Não conseguimos carregar mais reservas. Tente novamente.');
     } finally {
       setLoadingMore(false);
     }
@@ -111,7 +111,7 @@ export default function ClientAppointments({ userId, onNewBooking, onRescheduled
       <View style={s.header}>
         <View style={{ flex: 1 }}>
           <Text style={s.title}>Meus agendamentos</Text>
-          <Text style={s.subtitle}>Acompanhe suas reservas e seus atendimentos</Text>
+          <Text style={s.subtitle}>Seus próximos horários e atendimentos anteriores</Text>
         </View>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Atualizar meus agendamentos"
           style={s.refresh} onPress={load} disabled={loading || loadingMore}>
@@ -214,10 +214,10 @@ export default function ClientAppointments({ userId, onNewBooking, onRescheduled
                   onClose={()=>setReschedulingId(null)}
                   onSuccess={newStart=>{
                     setReschedulingId(null);
-                    setRescheduleNotice('Novo horário solicitado para '+new Date(newStart).toLocaleString('pt-BR',{
+                    setRescheduleNotice('Novo horário solicitado: '+new Date(newStart).toLocaleString('pt-BR',{
                       timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',
                       hour:'2-digit',minute:'2-digit'
-                    })+'. O estúdio precisa confirmar o pedido.');
+                    })+'. Aguarde a confirmação do estúdio.');
                     onRescheduled();
                     load();
                   }}/>} 

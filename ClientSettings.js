@@ -267,7 +267,7 @@ export default function ClientSettings({
           onPress={onBack} style={s.back}>
           <Ionicons name="chevron-back" size={28} color={C.ink}/>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Ajustes e Preferências</Text>
+        <Text style={s.headerTitle}>Ajustes e preferências</Text>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Atualizar preferências"
           onPress={load} style={s.refresh}>
           <Ionicons name="refresh-outline" size={21} color={C.mocha}/>
@@ -297,7 +297,7 @@ export default function ClientSettings({
       <Section title="MEU PERFIL">
         <SettingRow icon="create-outline" title="Editar dados pessoais"
           subtitle="Nome, telefone, e-mail e foto" onPress={()=>setEditing(true)}/>
-        <SettingRow icon="gift-outline" title="Data de nascimento (Aniversário)"
+        <SettingRow icon="gift-outline" title="Aniversário"
           value={birthdayLabel(birthday)} onPress={()=>showDialog('birthday')}/>
       </Section>
       <Section title="PREFERÊNCIAS DE ATENDIMENTO">
@@ -318,11 +318,11 @@ export default function ClientSettings({
           value={notice.email_enabled} disabled={busy||loading}
           onChange={enabled=>saveNotice('email_enabled',enabled)}/>
         <ToggleRow icon="notifications-outline" label="Avisos no aplicativo"
-          detail="Exibir contador no Início; não ativa push no celular."
+          detail="Mostrar avisos sobre seus horários dentro da sua conta."
           value={care.app_alerts_enabled} disabled={busy||loading}
           onChange={enabled=>saveCare({app_alerts_enabled:enabled})}/>
         <ToggleRow icon="star-outline" label="Novidades e promoções no aplicativo"
-          detail="Autorizo ver campanhas na Home. Não autoriza e-mails ou WhatsApp promocionais. Posso desativar quando quiser."
+          detail="Quero ver novidades na página inicial. Posso desativar quando quiser; não inclui e-mail ou WhatsApp."
           value={care.marketing_opt_in} disabled={busy||loading}
           onChange={enabled=>saveCare({marketing_opt_in:enabled})}/>
         <TouchableOpacity accessibilityRole="button" onPress={onOpenNotifications}
@@ -338,7 +338,7 @@ export default function ClientSettings({
           subtitle="Níveis, benefícios e pontos" onPress={onOpenRules}/>
       </Section>
       <Section title="AJUDA E SEGURANÇA">
-        <SettingRow icon="logo-whatsapp" title="Fale conosco / Suporte"
+        <SettingRow icon="logo-whatsapp" title="Fale com o estúdio"
           onPress={()=>openSupport()}/>
         <SettingRow icon="document-text-outline" title="Política de cancelamento"
           onPress={()=>showDialog('cancellation')}/>
@@ -430,8 +430,8 @@ export default function ClientSettings({
               </TouchableOpacity>
             </>}
             {dialog==='cancellation'&&<>
-              <Text style={s.text}>As condições específicas de cancelamento são informadas pelo estúdio. Não há uma política publicada no aplicativo para consultar neste momento.</Text>
-              <Text style={s.small}>Antes de cancelar um atendimento, solicite os prazos e condições diretamente ao estúdio.</Text>
+              <Text style={s.text}>Para saber os prazos e as condições de cancelamento, fale com o estúdio antes de alterar sua reserva.</Text>
+              <Text style={s.small}>Nossa equipe pode orientar você pelo WhatsApp.</Text>
               <TouchableOpacity onPress={()=>openSupport('Olá! Gostaria de consultar a política de cancelamento dos agendamentos.')}
                 style={s.modalButton}><Text style={s.modalButtonText}>Consultar no WhatsApp</Text></TouchableOpacity>
             </>}

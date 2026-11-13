@@ -37,7 +37,7 @@ export default function HomeScreen({
         </TouchableOpacity>
         <View style={styles.greetingTextBlock}>
           <Text style={styles.greetingFullName} numberOfLines={1}
-            adjustsFontSizeToFit>Olá, {displayName}!</Text>
+            adjustsFontSizeToFit>{user ? 'Olá, ' + displayName + '!' : 'Olá!'}</Text>
         </View>
         <TouchableOpacity style={styles.homeBellButton} accessibilityRole="button"
           accessibilityLabel={user ? 'Abrir notificações' :
@@ -112,9 +112,9 @@ export default function HomeScreen({
         <View style={styles.guestCard}>
           <View style={styles.guestCardHeader}>
             <Ionicons name="sparkles-outline" size={25} color={colors.mocha}/>
-            <Text style={styles.guestCardTitle}>Conheça a TR Beauty Concept</Text>
+            <Text style={styles.guestCardTitle}>Seu momento de cuidado começa aqui</Text>
           </View>
-          <Text style={styles.guestCardText}>Veja nossos serviços e trabalhos sem precisar criar uma conta. Para reservar um horário, entre ou cadastre-se.</Text>
+          <Text style={styles.guestCardText}>Conheça nossos serviços, inspire-se nos trabalhos do estúdio e escolha seu próximo horário.</Text>
           <TouchableOpacity style={styles.guestCardButton} accessibilityRole="button"
             onPress={() => onRequestAuth('Home')}>
             <Text style={styles.guestCardButtonText}>Entrar ou criar conta</Text>
@@ -214,7 +214,7 @@ export default function HomeScreen({
       {!isAdmin && <TouchableOpacity style={styles.primaryButton}
         accessibilityRole="button"
         onPress={() => { setBookingStartStep(1); setCurrentScreen('Booking'); if (user) { setBookingSuccess(''); setBookingView('new'); } }}>
-        <Text style={styles.primaryButtonText}>Agendar Meu Horário</Text>
+        <Text style={styles.primaryButtonText}>Agendar meu horário</Text>
         <Ionicons name="calendar-outline" size={20} color={colors.background}/>
       </TouchableOpacity>}
 
@@ -238,19 +238,19 @@ export default function HomeScreen({
           </View>
           <View style={{flex:1}}>
             <Text style={styles.studioInfoHeading}>TR Beauty Concept</Text>
-            <Text style={styles.studioInfoTagline}>Informações do estúdio</Text>
+            <Text style={styles.studioInfoTagline}>Onde nos encontrar</Text>
           </View>
         </View>
 
         <TouchableOpacity accessibilityRole="link"
-          accessibilityLabel="Conversar com o Studio pelo WhatsApp: (11) 94690-1167"
+          accessibilityLabel="Conversar com o estúdio pelo WhatsApp: (11) 94690-1167"
           onPress={() => Linking.openURL('https://wa.me/5511946901167')}
           style={styles.studioInfoRow}>
           <View style={styles.studioInfoRowIcon}>
             <Ionicons name="logo-whatsapp" size={20} color={colors.mocha}/>
           </View>
           <View style={styles.studioInfoRowText}>
-            <Text style={styles.studioInfoLabel}>WhatsApp do Studio</Text>
+            <Text style={styles.studioInfoLabel}>Fale pelo WhatsApp</Text>
             <Text style={styles.studioInfoValue}>(11) 94690-1167</Text>
           </View>
           <Ionicons name="arrow-up-forward-outline" size={17} color={colors.mocha}/>
@@ -259,7 +259,7 @@ export default function HomeScreen({
         <View style={styles.studioInfoDivider}/>
         <TouchableOpacity accessibilityRole="link"
           accessibilityLabel="Visitar o Instagram da Talita Nail Design"
-          onPress={() => Linking.openURL('https://www.instagram.com/__thalitanaildesign?cplk=c3A4emlocGRxOXEx')}
+          onPress={() => Linking.openURL('https://www.instagram.com/__thalitanaildesign/')}
           style={styles.studioInfoRow}>
           <View style={styles.studioInfoRowIcon}>
             <Ionicons name="logo-instagram" size={20} color={colors.mocha}/>
@@ -290,7 +290,7 @@ export default function HomeScreen({
           <Ionicons name="arrow-up-forward-outline" size={17} color={colors.mocha}/>
         </TouchableOpacity>
       </View>
-      <Text style={styles.studioInfoFooter}>Estúdio especializado em unhas 💅</Text>
+      <Text style={styles.studioInfoFooter}>Atendimento com horário marcado em Diadema, SP.</Text>
       <TouchableOpacity accessibilityRole="button" accessibilityLabel="Ler aviso de privacidade"
         onPress={()=>setPrivacyVisible(true)} style={{alignSelf:'center',paddingVertical:14}}>
         <Text style={{color:colors.mocha,fontSize:12,fontWeight:'700',textDecorationLine:'underline'}}>

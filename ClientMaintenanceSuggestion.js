@@ -88,11 +88,10 @@ export default function ClientMaintenanceSuggestion({userId,refreshSignal=0,onSt
       </View>
     </View>
     <Text style={s.body}>
-      Depois de {suggestion.serviceName}, o estúdio sugere considerar um
-      retorno por volta de <Text style={s.bold}>{dateLabel.format(new Date(suggestion.due))}</Text>.
+      Se quiser repetir {suggestion.serviceName}, nossa sugestão é voltar por volta de
+      <Text style={s.bold}> {dateLabel.format(new Date(suggestion.due))}</Text>.
     </Text>
-    <Text style={s.note}>É apenas uma sugestão, baseada no intervalo definido
-      pelo estúdio. A escolha do serviço, do horário e da reserva é sua.</Text>
+    <Text style={s.note}>Você escolhe o dia e o horário que preferir.</Text>
     <TouchableOpacity accessibilityRole="button"
       accessibilityLabel="Escolher serviço e horário de manutenção"
       style={s.button} onPress={onStartBooking}>

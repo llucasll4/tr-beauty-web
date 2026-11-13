@@ -351,21 +351,21 @@ async function main() {
   try {
     browser = await chromium.launch({headless:true});
     await testPage(browser,baseUrl,'guest-desktop', {viewport:{width:1280,height:900}}, async page => {
-      await page.getByText('Conheça a TR Beauty Concept', {exact:true}).waitFor({state:'visible',timeout:25000});
+      await page.getByText('Seu momento de cuidado começa aqui', {exact:true}).waitFor({state:'visible',timeout:25000});
       await page.getByText('Banho de Gel', {exact:true}).first().waitFor({state:'visible'});
       await page.getByText('Entrar ou criar conta',{exact:true}).last().click();
-      await page.getByText('Bem-vinda ao seu espaço de beleza').waitFor({state:'visible'});
+      await page.getByText('Entre para agendar e acompanhar seus horários').waitFor({state:'visible'});
       await page.getByText('Continuar navegando sem conta').click();
-      await page.getByText('Conheça a TR Beauty Concept',{exact:true}).waitFor({state:'visible'});
+      await page.getByText('Seu momento de cuidado começa aqui',{exact:true}).waitFor({state:'visible'});
     });
     await testPage(browser,baseUrl,'guest-mobile',
       {viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true},
       async page => {
-        await page.getByText('Conheça a TR Beauty Concept',{exact:true}).waitFor({state:'visible',timeout:25000});
+        await page.getByText('Seu momento de cuidado começa aqui',{exact:true}).waitFor({state:'visible',timeout:25000});
         await page.getByText('Banho de Gel',{exact:true}).first().waitFor({state:'visible'});
         await page.getByText('Galeria',{exact:true}).last().click();
         await page.getByText('Início',{exact:true}).last().click();
-        await page.getByText('Conheça a TR Beauty Concept',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Seu momento de cuidado começa aqui',{exact:true}).waitFor({state:'visible'});
       });
     // Accessibility regression: small mobile viewports, touch targets and selected navigation.
     await testPage(browser,baseUrl,'mobile-a11y-320',

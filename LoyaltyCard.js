@@ -37,7 +37,7 @@ export default function LoyaltyCard({ userId, refreshSignal = 0, onOpenDetails }
       setError('');
     } catch (e) {
       if (requestId === requestRef.current) {
-        setError('Não foi possível atualizar os TR Points: ' + (e?.message || 'erro desconhecido'));
+        setError('Não conseguimos atualizar seus pontos agora. Tente novamente.');
       }
     } finally {
       if (requestId === requestRef.current) setLoading(false);

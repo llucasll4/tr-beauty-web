@@ -203,9 +203,9 @@ export default function ClientNotifications({
           </TouchableOpacity>
         )}
         <Text style={s.footnote}>
-          Estes avisos ficam disponíveis dentro da sua conta.
-          As notificações por e-mail e, futuramente, WhatsApp seguem as preferências
-          configuradas no Perfil. Horários exibidos no fuso de Brasília.
+          Você pode consultar estes avisos sempre que quiser.
+          As preferências de contato ficam em Perfil → Ajustes.
+          Horários no fuso de Brasília.
         </Text>
       </ScrollView>
     </View>
